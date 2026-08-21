@@ -1,0 +1,211 @@
+﻿@page
+@model GeoPharma.Pages.Estabelecimentos.CreateModel
+@{
+    ViewData["Title"] = "Novo Estabelecimento";
+}
+
+<style>
+    .form-label {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.2rem;
+    }
+
+    .form-control-sm {
+        font-size: 0.8rem;
+        border-color: #ced4da;
+    }
+</style>
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center my-3">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark">Cadastrar Estabelecimento</h4>
+            <span class="text-muted small">Inclusão de nova unidade ou farmácia</span>
+        </div>
+        <a asp-page="Index" class="btn btn-outline-secondary btn-sm px-3">
+            <i class="fa-solid fa-arrow-left me-1"></i> Voltar
+        </a>
+    </div>
+
+    <form method="post">
+        <div class="card border-0 shadow-sm p-3 mb-3" style="background-color: #ffffff; border-radius: 6px;">
+            <h6 class="fw-bold border-bottom pb-2 mb-3 text-secondary">Dados Gerais</h6>
+
+            <!-- Linha 1: Dados Gerais -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-2">
+                    <label class="form-label">CNPJ *</label>
+                    <input asp-for="Estabelecimento.Cnpj" id="txtCnpj" class="form-control form-control-sm" placeholder="00.000.000/0000-00" maxlength="18" oninput="mascaraCnpj(this)" onblur="buscarDadosPorCnpj()" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nome Fantasia *</label>
+                    <input asp-for="Estabelecimento.NomeFantasia" id="txtNomeFantasia" class="form-control form-control-sm" required />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Razão Social</label>
+                    <input asp-for="Estabelecimento.RazaoSocial" id="txtRazaoSocial" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Região</label>
+                    <input asp-for="Estabelecimento.Regiao" id="txtRegiao" class="form-control form-control-sm" placeholder="Ex: Zona Norte" />
+                </div>
+                <div class="col-md-1 d-flex align-items-end pb-1 justify-content-center">
+                    <div class="form-check">
+                        <input asp-for="Estabelecimento.Ativo" class="form-check-input" type="checkbox" checked />
+                        <label class="form-check-label fw-bold small">Ativo</label>
+                    </div>
+                </div>
+            </div>
+
+            <h6 class="fw-bold border-bottom pb-2 mt-2 mb-3 text-secondary">Endereço & Geolocalização</h6>
+
+            <!-- Linha 2: Endereço -->
+            <div class="row g-2 mb-2">
+                <div class="col-md-2">
+                    <label class="form-label">CEP *</label>
+                    <input asp-for="Estabelecimento.Cep" id="txtCep" class="form-control form-control-sm" placeholder="00000-000" maxlength="9" oninput="mascaraCep(this)" required />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Logradouro / Rua</label>
+                    <input asp-for="Estabelecimento.Logradouro" id="txtLogradouro" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Número *</label>
+                    <input asp-for="Estabelecimento.Numero" id="txtNumero" class="form-control form-control-sm" placeholder="Ex: 123" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Bairro</label>
+                    <input asp-for="Estabelecimento.Bairro" id="txtBairro" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cidade</label>
+                    <input asp-for="Estabelecimento.Cidade" id="txtCidade" class="form-control form-control-sm" />
+                </div>
+            </div>
+
+            <!-- Linha 3: Coordenadas -->
+            <div class="row g-2">
+                <div class="col-md-1">
+                    <label class="form-label">UF</label>
+                    <input asp-for="Estabelecimento.Uf" id="txtUf" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Latitude</label>
+                    <input asp-for="Estabelecimento.Latitude" id="txtLatitude" type="number" step="any" class="form-control form-control-sm" />
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Longitude</label>
+                    <input asp-for="Estabelecimento.Longitude" id="txtLongitude" type="number" step="any" class="form-control form-control-sm" />
+                </div>
+            </div>
+
+            <div class="mt-4 pt-2 border-top d-flex justify-content-end gap-2">
+                <a asp-page="Index" class="btn btn-outline-secondary btn-sm px-4">Cancelar</a>
+                <button type="submit" class="btn btn-dark btn-sm px-4">Salvar Estabelecimento</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        function mascaraCep(input) {
+            let v = input.value.replace(/\D/g, '');
+            if (v.length > 5) {
+                v = v.substring(0, 5) + '-' + v.substring(5, 8);
+            }
+            input.value = v;
+        }
+
+        function mascaraCnpj(input) {
+            let v = input.value.replace(/\D/g, '');
+            v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+            v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+            v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+            v = v.replace(/(\d{4})(\d)/, '$1-$2');
+            input.value = v.substring(0, 18);
+        }
+
+        async function buscarDadosPorCnpj() {
+            const cnpjInput = document.getElementById('txtCnpj');
+            const cnpjClean = cnpjInput.value.replace(/\D/g, '');
+
+            if (cnpjClean.length !== 14) return;
+
+            try {
+                const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+
+                document.getElementById('txtRazaoSocial').value = data.razao_social || '';
+                document.getElementById('txtNomeFantasia').value = data.nome_fantasia || data.razao_social || '';
+
+                document.getElementById('txtLogradouro').value = data.logradouro || '';
+                document.getElementById('txtNumero').value = data.numero || '';
+                document.getElementById('txtBairro').value = data.bairro || '';
+                document.getElementById('txtCidade').value = data.municipio || '';
+                document.getElementById('txtUf').value = data.uf || '';
+
+                if (data.cep) {
+                    const cepFormatted = data.cep.replace(/\D/g, '').replace(/^(\d{5})(\d{3})$/, '$1-$2');
+                    document.getElementById('txtCep').value = cepFormatted;
+                }
+
+                preencherRegiaoAutomatica(data.municipio, data.bairro);
+                buscarGeolocalizacaoExata();
+
+            } catch (error) {
+                console.error('Erro ao buscar dados do CNPJ:', error);
+            }
+        }
+
+        function preencherRegiaoAutomatica(cidade, bairro) {
+            if (!cidade) return;
+
+            const bairroUpper = (bairro || '').toUpperCase();
+            const cidadeUpper = cidade.toUpperCase();
+
+            if (cidadeUpper === 'RIO DE JANEIRO') {
+                if (['MEIER', 'MÉIER', 'ENGENHO DE DENTRO', 'MADUREIRA', 'CASCADURA', 'TIJUCA', 'RAMOS', 'PENHA', 'IRAJA', 'IRAJÁ', 'PAVUNA', 'VILA ISABEL', 'GRAJAU', 'MARACANA'].includes(bairroUpper)) {
+                    document.getElementById('txtRegiao').value = 'Zona Norte';
+                } else if (['COPACABANA', 'IPANEMA', 'LEBLON', 'BOTAFOGO', 'FLAMENGO', 'LARANJEIRAS'].includes(bairroUpper)) {
+                    document.getElementById('txtRegiao').value = 'Zona Sul';
+                } else if (['CAMPO GRANDE', 'BANGU', 'BARRA DA TIJUCA', 'RECREIO DOS BANDEIRANTES', 'JACAREPAGUA', 'JACAREPAGUÁ', 'REALENGO', 'SANTA CRUZ'].includes(bairroUpper)) {
+                    document.getElementById('txtRegiao').value = 'Zona Oeste';
+                } else if (['CENTRO', 'LAPA', 'SAUDE', 'SAÚDE', 'GAMBOA', 'SANTO CRISTO'].includes(bairroUpper)) {
+                    document.getElementById('txtRegiao').value = 'Centro';
+                } else {
+                    document.getElementById('txtRegiao').value = 'Capital';
+                }
+            } else {
+                document.getElementById('txtRegiao').value = 'Baixada Fluminense / Metropolitana';
+            }
+        }
+
+        async function buscarGeolocalizacaoExata() {
+            const rua = document.getElementById('txtLogradouro').value;
+            const numero = document.getElementById('txtNumero').value;
+            const cidade = document.getElementById('txtCidade').value;
+            const uf = document.getElementById('txtUf').value;
+
+            if (!rua || !cidade) return;
+
+            const enderecoConsulta = `${rua}, ${numero ? numero + ',' : ''} ${cidade}, ${uf}, Brasil`;
+
+            try {
+                const responseGeo = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(enderecoConsulta)}`);
+                const dataGeo = await responseGeo.json();
+
+                if (dataGeo && dataGeo.length > 0) {
+                    document.getElementById('txtLatitude').value = dataGeo[0].lat;
+                    document.getElementById('txtLongitude').value = dataGeo[0].lon;
+                }
+            } catch (error) {
+                console.error('Erro na busca de coordenadas:', error);
+            }
+        }
+    </script>
+}

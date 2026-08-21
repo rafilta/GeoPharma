@@ -1,0 +1,69 @@
+﻿@page
+@model GeoPharma.Pages.Account.LoginModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Login - GeoPharma";
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <style>
+        body {
+            background-color: #f4f6f9;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-login {
+            width: 100%;
+            max-width: 400px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background-color: #0d6efd;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card card-login p-4">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-primary">GeoPharma</h3>
+            <p class="text-muted">Acesse o sistema com suas credenciais</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.MensagemErro))
+        {
+            <div class="alert alert-danger p-2 text-center" role="alert">
+                @Model.MensagemErro
+            </div>
+        }
+
+        <form method="post" asp-page="/Account/Login">
+            <div class="mb-3">
+                <label class="form-label font-weight-bold">E-mail</label>
+                <input type="email" asp-for="Input.Email" class="form-control" placeholder="admin@geopharma.com" required />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label font-weight-bold">Senha</label>
+                <input type="password" asp-for="Input.Senha" class="form-control" placeholder="••••••••" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 mt-2">Entrar</button>
+        </form>
+    </div>
+
+</body>
+</html>
