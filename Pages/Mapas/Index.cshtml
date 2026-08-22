@@ -1,54 +1,1700 @@
 ﻿@page
 @model GeoPharma.Pages.Mapas.IndexModel
+@using System.Text.Json
+
 @{
-    ViewData["Title"] = "Mapa de Leads";
+    ViewData["Title"] = "Central Comercial";
+
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 }
 
-<div class="container-fluid mt-3">
-    <h2><i class="fas fa-map-marked-alt text-primary"></i> Mapa de Prospecção e Leads</h2>
+<link rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <!-- Elemento onde o mapa será renderizado -->
-    <div id="map" style="height: 75vh; width: 100%; border-radius: 8px;" class="shadow-sm"></div>
+<style>
+
+    .geo-page {
+        height: calc(100vh - 120px);
+        min-height: 680px;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    .geo-container {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* CABEÇALHO */
+
+    .geo-header {
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+        padding: 14px 20px;
+    }
+
+    .geo-title {
+        font-size: 1.35rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .geo-subtitle {
+        color: #6c757d;
+        font-size: .85rem;
+        margin: 3px 0 0;
+    }
+
+    /* INDICADORES */
+
+    .geo-indicators {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+    }
+
+    .geo-kpi {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px 14px;
+    }
+
+    .geo-kpi-number {
+        font-size: 1.3rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .geo-kpi-label {
+        color: #6c757d;
+        font-size: .75rem;
+        margin-top: 5px;
+    }
+
+    /* PESQUISA TERRITORIAL */
+
+    .geo-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 12px 20px;
+    }
+
+    .geo-toolbar-grid {
+        display: grid;
+        grid-template-columns: minmax(350px, 3fr) minmax(130px, 1fr) auto auto;
+        gap: 10px;
+        align-items: end;
+    }
+
+    .geo-field {
+        position: relative;
+    }
+
+        .geo-field label {
+            font-size: .72rem;
+            font-weight: 600;
+            color: #6c757d;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+    /* AUTOCOMPLETE */
+
+    .address-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 8px 8px;
+        max-height: 280px;
+        overflow-y: auto;
+        box-shadow: 0 5px 15px rgba(0,0,0,.12);
+        display: none;
+        z-index: 2000;
+    }
+
+    .address-suggestion {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: .82rem;
+    }
+
+        .address-suggestion:last-child {
+            border-bottom: 0;
+        }
+
+        .address-suggestion:hover {
+            background: #f5f7f9;
+        }
+
+    .address-loading {
+        padding: 12px;
+        font-size: .82rem;
+        color: #6c757d;
+    }
+
+    /* MAPA */
+
+    .geo-map-container {
+        position: relative;
+        flex: 1;
+        min-height: 450px;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* LEGENDA */
+
+    .geo-legend {
+        position: absolute;
+        right: 15px;
+        bottom: 25px;
+        background: rgba(255,255,255,.97);
+        border-radius: 8px;
+        padding: 12px 15px;
+        box-shadow: 0 2px 12px rgba(0,0,0,.15);
+        z-index: 800;
+        min-width: 185px;
+        font-size: .78rem;
+    }
+
+    .legend-title {
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .legend-row {
+        display: flex;
+        align-items: center;
+        margin: 5px 0;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        border: 2px solid #fff;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.15);
+    }
+
+    /* MARCADORES */
+
+    .geo-marker {
+        width: 20px;
+        height: 20px;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,.35);
+        position: relative;
+    }
+
+    .geo-marker-inner {
+        width: 6px;
+        height: 6px;
+        background: #fff;
+        border-radius: 50%;
+        position: absolute;
+        left: 5px;
+        top: 5px;
+    }
+
+    /* POPUP */
+
+    .leaflet-popup-content-wrapper {
+        border-radius: 10px;
+    }
+
+    .leaflet-popup-content {
+        margin: 15px;
+        width: 325px !important;
+    }
+
+    .popup-company {
+        font-size: 1rem;
+        font-weight: 700;
+        line-height: 1.25;
+    }
+
+    .popup-type {
+        font-size: .7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin: 4px 0 12px;
+    }
+
+    .popup-row {
+        padding: 6px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .popup-label {
+        display: block;
+        color: #6c757d;
+        font-size: .7rem;
+    }
+
+    .popup-value {
+        font-size: .82rem;
+        font-weight: 500;
+    }
+
+    .popup-actions {
+        margin-top: 12px;
+    }
+
+    /* LOCALIZAÇÃO */
+
+    .location-marker {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #0d6efd;
+        border: 4px solid white;
+        box-shadow: 0 0 0 3px rgba(13,110,253,.30), 0 2px 8px rgba(0,0,0,.30);
+    }
+
+    /* TOAST */
+
+    .geo-toast-container {
+        position: fixed;
+        right: 25px;
+        top: 85px;
+        width: 360px;
+        z-index: 9999;
+    }
+
+    @@media(max-width: 1000px) {
+
+        .geo-toolbar-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .geo-indicators {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+</style>
+
+
+<div class="geo-page">
+
+    <div class="geo-container">
+
+        <!-- CABEÇALHO -->
+
+        <div class="geo-header">
+
+            <h1 class="geo-title">
+                <i class="fa-solid fa-map-location-dot text-primary me-2"></i>
+                Central Comercial
+            </h1>
+
+            <p class="geo-subtitle">
+                Visualize todo o mercado, leads e clientes antes de realizar qualquer abordagem comercial.
+            </p>
+
+
+            <div class="geo-indicators">
+
+                <div class="geo-kpi">
+
+                    <div class="geo-kpi-number"
+                         id="kpiOportunidades">
+                        @Model.TotalOportunidades
+                    </div>
+
+                    <div class="geo-kpi-label">
+                        Possíveis Leads
+                    </div>
+
+                </div>
+
+
+                <div class="geo-kpi">
+
+                    <div class="geo-kpi-number"
+                         id="kpiLeads">
+                        @Model.TotalLeads
+                    </div>
+
+                    <div class="geo-kpi-label">
+                        Leads Cadastrados
+                    </div>
+
+                </div>
+
+
+                <div class="geo-kpi">
+
+                    <div class="geo-kpi-number"
+                         id="kpiAndamento">
+                        @Model.TotalEmAndamento
+                    </div>
+
+                    <div class="geo-kpi-label">
+                        Em Andamento
+                    </div>
+
+                </div>
+
+
+                <div class="geo-kpi">
+
+                    <div class="geo-kpi-number"
+                         id="kpiNegociando">
+                        @Model.TotalNegociando
+                    </div>
+
+                    <div class="geo-kpi-label">
+                        Negociando
+                    </div>
+
+                </div>
+
+
+                <div class="geo-kpi">
+
+                    <div class="geo-kpi-number"
+                         id="kpiConvertidos">
+                        @Model.TotalConvertidos
+                    </div>
+
+                    <div class="geo-kpi-label">
+                        Clientes
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- PESQUISA TERRITORIAL -->
+
+        <div class="geo-toolbar">
+
+            <div class="geo-toolbar-grid">
+
+
+                <!-- ENDEREÇO -->
+
+                <div class="geo-field">
+
+                    <label>
+                        Endereço ou região
+                    </label>
+
+                    <div class="input-group">
+
+                        <span class="input-group-text bg-white">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </span>
+
+                        <input type="text"
+                               id="addressInput"
+                               class="form-control"
+                               placeholder="Digite rua, bairro, cidade, CEP..." />
+
+                    </div>
+
+
+                    <div id="addressSuggestions"
+                         class="address-suggestions">
+                    </div>
+
+                </div>
+
+
+                <!-- RAIO -->
+
+                <div class="geo-field">
+
+                    <label>
+                        Raio de busca
+                    </label>
+
+                    <div class="input-group">
+
+                        <input type="number"
+                               id="radiusInput"
+                               class="form-control"
+                               placeholder="Ex: 5"
+                               min="1"
+                               max="100"
+                               step="1" />
+
+                        <span class="input-group-text">
+                            km
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- LOCALIZAÇÃO -->
+
+                <div class="geo-field">
+
+                    <label>&nbsp;</label>
+
+                    <button type="button"
+                            id="btnCurrentLocation"
+                            class="btn btn-outline-primary w-100"
+                            onclick="usarLocalizacaoAtual()">
+
+                        <i class="fa-solid fa-location-crosshairs me-1"></i>
+
+                        Minha localização
+
+                    </button>
+
+                </div>
+
+
+                <!-- APLICAR -->
+
+                <div class="geo-field">
+
+                    <label>&nbsp;</label>
+
+                    <button type="button"
+                            class="btn btn-primary px-4 w-100"
+                            onclick="aplicarPesquisaTerritorial()">
+
+                        <i class="fa-solid fa-crosshairs me-1"></i>
+
+                        Aplicar
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- MAPA -->
+
+        <div class="geo-map-container">
+
+            <div id="map"></div>
+
+
+            <div class="geo-legend">
+
+                <div class="legend-title">
+                    Situação Comercial
+                </div>
+
+                <div class="legend-row">
+
+                    <span class="legend-dot"
+                          style="background:#6c757d">
+                    </span>
+
+                    Possível Lead
+
+                </div>
+
+
+                <div class="legend-row">
+
+                    <span class="legend-dot"
+                          style="background:#dc3545">
+                    </span>
+
+                    Lead em Andamento
+
+                </div>
+
+
+                <div class="legend-row">
+
+                    <span class="legend-dot"
+                          style="background:#ffc107">
+                    </span>
+
+                    Negociando
+
+                </div>
+
+
+                <div class="legend-row">
+
+                    <span class="legend-dot"
+                          style="background:#198754">
+                    </span>
+
+                    Cliente
+
+                </div>
+
+
+                <div class="legend-row">
+
+                    <span class="legend-dot"
+                          style="background:#212529">
+                    </span>
+
+                    Lead Perdido
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
 </div>
 
+
+<form id="antiForgeryForm"
+      method="post"
+      style="display:none">
+
+    @Html.AntiForgeryToken()
+
+</form>
+
+
+<div class="geo-toast-container">
+
+    <div id="geoToast"
+         class="toast align-items-center border-0"
+         role="alert">
+
+        <div class="d-flex">
+
+            <div id="geoToastMessage"
+                 class="toast-body">
+            </div>
+
+            <button type="button"
+                    class="btn-close me-2 m-auto"
+                    data-bs-dismiss="toast">
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
 @section Scripts {
-    <!-- Certifique-se de incluir os arquivos CSS e JS do Leaflet no seu _Layout ou aqui -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
 
     <script>
-        // Inicializa o mapa (centralizado, por exemplo, em coordenadas padrão ou ajustadas)
-        var map = L.map('map').setView([-23.550520, -46.633308], 13);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    /* ==============================================================
+       DADOS
+       ============================================================== */
+
+    const pontos =
+        @Html.Raw(
+            JsonSerializer.Serialize(
+                Model.Pontos,
+                jsonOptions
+            )
+        );
+
+
+    /* ==============================================================
+       MAPA
+       ============================================================== */
+
+    const map =
+        L.map("map");
+
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
             maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
+            attribution: "© OpenStreetMap"
+        }
+    ).addTo(map);
 
-        // Dados vindos do C# convertidos em JSON para o JavaScript consumir
-        var leadsSalvos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.LeadsSalvos));
 
-        // Varre cada lead salvo e cria o marcador vermelho com todas as informações no pop-up
-        leadsSalvos.forEach(function (lead) {
-            if (lead.latitude && lead.longitude) {
-                // Conteúdo completo do Pop-up com todas as propriedades exigidas
-                var popupHtml = `
-                    <div style="font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4;">
-                        <h5 style="margin: 0 0 8px 0; color: #dc3545; border-bottom: 1px solid #ddd; padding-bottom: 4px;">
-                            <i class="fas fa-store"></i> ${lead.nome}
-                        </h5>
-                        <p style="margin: 4px 0;"><strong>CNPJ:</strong> ${lead.cnpj}</p>
-                        <p style="margin: 4px 0;"><strong>Endereço:</strong> ${lead.endereco}</p>
-                        <p style="margin: 4px 0;"><strong>Status:</strong> <span class="badge bg-info text-dark">${lead.status}</span></p>
-                        <p style="margin: 4px 0;"><strong>Responsável:</strong> ${lead.responsavel}</p>
-                        <p style="margin: 4px 0; color: #666; font-size: 11px;"><strong>Data Captura:</strong> ${lead.dataCaptura}</p>
+    const markerLayer =
+        L.layerGroup().addTo(map);
+
+
+    let radiusCircle = null;
+
+    let searchLocationMarker = null;
+
+    let selectedLatitude = null;
+
+    let selectedLongitude = null;
+
+    let selectedAddress = null;
+
+
+    // Spinner overlay no mapa para carregamento
+    const mapContainer = document.querySelector(".geo-map-container");
+    const spinnerOverlay = document.createElement("div");
+    spinnerOverlay.className = "map-loading-overlay";
+    spinnerOverlay.innerHTML = '<div class="spinner-border text-primary" role="status"></div><span class="ms-2 fw-bold text-dark">Carregando região...</span>';
+    spinnerOverlay.style.cssText = "position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.7);z-index:3000;display:none;align-items:center;justify-content:center;";
+    mapContainer.appendChild(spinnerOverlay);
+
+    function mostrarSpinner(mostrar) {
+        spinnerOverlay.style.display = mostrar ? "flex" : "none";
+    }
+
+
+    /* ==============================================================
+       CORES
+       ============================================================== */
+
+    function obterCor(ponto) {
+
+        if (ponto.tipo === "oportunidade") {
+
+            return "#6c757d";
+        }
+
+        const status =
+            (ponto.status || "")
+                .toLowerCase();
+
+
+        if (status === "negociando") {
+
+            return "#ffc107";
+        }
+
+
+        if (status === "convertido") {
+
+            return "#198754";
+        }
+
+
+        if (status === "perdido") {
+
+            return "#212529";
+        }
+
+
+        return "#dc3545";
+    }
+
+
+    /* ==============================================================
+       ÍCONES
+       ============================================================== */
+
+    function criarIcone(ponto) {
+
+        return L.divIcon({
+
+            className: "",
+
+            html: `
+                <div class="geo-marker"
+                     style="background:${obterCor(ponto)}">
+
+                    <div class="geo-marker-inner">
+                    </div>
+
+                </div>
+            `,
+
+            iconSize: [22,22],
+
+            iconAnchor: [11,22],
+
+            popupAnchor: [0,-22]
+        });
+    }
+
+
+    /* ==============================================================
+       SEGURANÇA HTML
+       ============================================================== */
+
+    function escapeHtml(value) {
+
+        if (
+            value === null ||
+            value === undefined
+        ) {
+            return "";
+        }
+
+
+        return String(value)
+
+            .replaceAll("&","&amp;")
+
+            .replaceAll("<","&lt;")
+
+            .replaceAll(">","&gt;")
+
+            .replaceAll('"',"&quot;")
+
+            .replaceAll("'","&#039;");
+    }
+
+
+    /* ==============================================================
+       POPUP POSSÍVEL LEAD
+       ============================================================== */
+
+    function popupOportunidade(ponto) {
+
+        return `
+
+            <div>
+
+                <div class="popup-company">
+                    ${escapeHtml(ponto.nome)}
+                </div>
+
+                <div class="popup-type text-secondary">
+                    Possível Lead
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        CNPJ
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.cnpj)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Endereço
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.endereco)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Situação comercial
+                    </span>
+
+                    <span class="badge bg-secondary">
+                        Disponível para prospecção
+                    </span>
+
+                </div>
+
+
+                <div class="popup-actions d-grid">
+
+                    <button type="button"
+                            class="btn btn-primary btn-sm"
+                            onclick="capturarLead(
+                                ${ponto.estabelecimentoId}
+                            )">
+
+                        Capturar Lead
+
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* ==============================================================
+       POPUP LEAD / CLIENTE
+       ============================================================== */
+
+    function popupLead(ponto) {
+
+        const cliente =
+            ponto.status === "Convertido";
+
+
+        return `
+
+            <div>
+
+                <div class="popup-company">
+                    ${escapeHtml(ponto.nome)}
+                </div>
+
+
+                <div class="popup-type ${cliente
+                    ? "text-success"
+                    : "text-danger"}">
+
+                    ${cliente
+                        ? "Cliente"
+                        : "Lead cadastrado"}
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        CNPJ
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.cnpj)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Endereço
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.endereco)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Responsável comercial
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.responsavel)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Capturado em
+                    </span>
+
+                    <span class="popup-value">
+                        ${escapeHtml(ponto.dataCaptura)}
+                    </span>
+
+                </div>
+
+
+                <div class="popup-row">
+
+                    <span class="popup-label">
+                        Status
+                    </span>
+
+                    <select id="statusLead_${ponto.leadId}"
+                            class="form-select form-select-sm">
+
+                        ${optionStatus(
+                            "Em Andamento",
+                            ponto.status
+                        )}
+
+                        ${optionStatus(
+                            "Negociando",
+                            ponto.status
+                        )}
+
+                        ${optionStatus(
+                            "Convertido",
+                            ponto.status
+                        )}
+
+                        ${optionStatus(
+                            "Perdido",
+                            ponto.status
+                        )}
+
+                    </select>
+
+                </div>
+
+
+                <div class="popup-actions d-grid">
+
+                    <button type="button"
+                            class="btn btn-primary btn-sm"
+                            onclick="atualizarStatus(
+                                ${ponto.leadId}
+                            )">
+
+                        Atualizar Status
+
+                    </button>
+
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    function optionStatus(valor, atual) {
+
+        const selected =
+            valor === atual
+                ? "selected"
+                : "";
+
+
+        return `
+            <option value="${valor}"
+                    ${selected}>
+
+                ${valor}
+
+            </option>
+        `;
+    }
+
+
+    /* ==============================================================
+       TODOS OS PONTOS SEMPRE VISÍVEIS
+       ============================================================== */
+
+    function carregarTodosOsPontos() {
+
+        markerLayer.clearLayers();
+
+
+        const bounds = [];
+
+
+        pontos.forEach(ponto => {
+
+            if (
+                ponto.latitude === null ||
+                ponto.longitude === null
+            ) {
+
+                return;
+            }
+
+
+            const marker =
+                L.marker(
+                    [
+                        ponto.latitude,
+                        ponto.longitude
+                    ],
+                    {
+                        icon: criarIcone(ponto)
+                    }
+                );
+
+
+            marker.bindPopup(
+
+                ponto.tipo === "lead"
+
+                    ? popupLead(ponto)
+
+                    : popupOportunidade(ponto),
+
+                {
+                    maxWidth: 370
+                }
+            );
+
+
+            marker.addTo(markerLayer);
+
+
+            bounds.push([
+                ponto.latitude,
+                ponto.longitude
+            ]);
+        });
+
+
+        if (bounds.length > 0) {
+
+            map.fitBounds(
+                bounds,
+                {
+                    padding: [30,30],
+                    maxZoom: 13
+                }
+            );
+        }
+        else {
+
+            map.setView(
+                [-22.9068,-43.1729],
+                11
+            );
+        }
+    }
+
+
+    /* ==============================================================
+       CLIQUE NO MAPA (OBTER ENDEREÇO EXATO)
+       ============================================================== */
+
+    map.on('click', async function(e) {
+        selectedLatitude = e.latlng.lat;
+        selectedLongitude = e.latlng.lng;
+
+        mostrarSpinner(true);
+        try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${selectedLatitude}&lon=${selectedLongitude}`);
+            const data = await res.json();
+            selectedAddress = data.display_name || "Endereço selecionado no mapa";
+            document.getElementById("addressInput").value = selectedAddress;
+        } catch {
+            selectedAddress = "Localização personalizada";
+            document.getElementById("addressInput").value = selectedAddress;
+        }
+        mostrarSpinner(false);
+    });
+
+
+    /* ==============================================================
+       AUTOCOMPLETE ENDEREÇO
+       ============================================================== */
+
+    const addressInput =
+        document.getElementById(
+            "addressInput"
+        );
+
+
+    const suggestions =
+        document.getElementById(
+            "addressSuggestions"
+        );
+
+
+    let autocompleteTimer = null;
+
+
+    addressInput.addEventListener(
+        "input",
+        function() {
+
+            const texto =
+                this.value.trim();
+
+
+            selectedLatitude = null;
+
+            selectedLongitude = null;
+
+            selectedAddress = null;
+
+
+            clearTimeout(
+                autocompleteTimer
+            );
+
+
+            if (texto.length < 3) {
+
+                suggestions.style.display =
+                    "none";
+
+                return;
+            }
+
+
+            autocompleteTimer =
+                setTimeout(
+                    () => pesquisarEnderecos(texto),
+                    500
+                );
+        }
+    );
+
+
+    async function pesquisarEnderecos(texto) {
+
+        suggestions.innerHTML =
+            `
+                <div class="address-loading">
+                    Buscando endereços...
+                </div>
+            `;
+
+
+        suggestions.style.display =
+            "block";
+
+
+        try {
+
+            const url =
+                "https://nominatim.openstreetmap.org/search" +
+
+                "?format=json" +
+
+                "&addressdetails=1" +
+
+                "&countrycodes=br" +
+
+                "&limit=7" +
+
+                "&q=" +
+
+                encodeURIComponent(texto);
+
+
+            const response =
+                await fetch(url);
+
+
+            const resultados =
+                await response.json();
+
+
+            suggestions.innerHTML = "";
+
+
+            if (!resultados.length) {
+
+                suggestions.innerHTML =
+                    `
+                        <div class="address-loading">
+                            Nenhum endereço encontrado.
+                        </div>
+                    `;
+
+                return;
+            }
+
+
+            resultados.forEach(item => {
+
+                const element =
+                    document.createElement("div");
+
+
+                element.className =
+                    "address-suggestion";
+
+
+                element.textContent =
+                    item.display_name;
+
+
+                element.onclick =
+                    function() {
+
+                        selecionarEndereco(
+                            item
+                        );
+                    };
+
+
+                suggestions.appendChild(
+                    element
+                );
+            });
+        }
+        catch {
+
+            suggestions.innerHTML =
+                `
+                    <div class="address-loading">
+                        Não foi possível consultar endereços.
                     </div>
                 `;
+        }
+    }
 
-                L.marker([lead.latitude, lead.longitude])
-                  .addTo(map)
-                  .bindPopup(popupHtml);
+
+    function selecionarEndereco(item) {
+
+        addressInput.value =
+            item.display_name;
+
+
+        selectedLatitude =
+            parseFloat(item.lat);
+
+
+        selectedLongitude =
+            parseFloat(item.lon);
+
+
+        selectedAddress =
+            item.display_name;
+
+
+        suggestions.style.display =
+            "none";
+    }
+
+
+    /* ==============================================================
+       LOCALIZAÇÃO ATUAL
+       ============================================================== */
+
+    function usarLocalizacaoAtual() {
+
+        if (!navigator.geolocation) {
+
+            mostrarToast(
+                "Seu navegador não suporta geolocalização.",
+                false
+            );
+
+            return;
+        }
+
+
+        const button =
+            document.getElementById(
+                "btnCurrentLocation"
+            );
+
+
+        const textoOriginal =
+            button.innerHTML;
+
+
+        button.disabled = true;
+
+        button.innerHTML =
+            `
+                <span class="spinner-border spinner-border-sm me-1">
+                </span>
+
+                Localizando...
+            `;
+
+
+        navigator.geolocation.getCurrentPosition(
+
+            function(position) {
+
+                selectedLatitude =
+                    position.coords.latitude;
+
+
+                selectedLongitude =
+                    position.coords.longitude;
+
+
+                selectedAddress =
+                    "Minha localização atual";
+
+
+                addressInput.value =
+                    "Minha localização atual";
+
+
+                button.disabled = false;
+
+                button.innerHTML =
+                    textoOriginal;
+
+
+                mostrarToast(
+                    "Localização identificada. Clique em Aplicar.",
+                    true
+                );
+            },
+
+            function() {
+
+                button.disabled = false;
+
+                button.innerHTML =
+                    textoOriginal;
+
+
+                mostrarToast(
+                    "Não foi possível obter sua localização.",
+                    false
+                );
+            },
+
+            {
+                enableHighAccuracy: true,
+
+                timeout: 10000,
+
+                maximumAge: 60000
             }
-        });
+        );
+    }
+
+
+    /* ==============================================================
+       APLICAR PESQUISA TERRITORIAL
+       ============================================================== */
+
+    async function aplicarPesquisaTerritorial() {
+
+        if (
+            selectedLatitude === null ||
+            selectedLongitude === null
+        ) {
+
+            mostrarToast(
+                "Selecione um endereço sugerido ou clique em um ponto do mapa.",
+                false
+            );
+
+            return;
+        }
+
+
+        mostrarSpinner(true);
+
+        await new Promise(r => setTimeout(r, 400));
+
+
+        let raio =
+            parseFloat(
+                document
+                    .getElementById(
+                        "radiusInput"
+                    )
+                    .value
+            );
+
+
+        if (
+            !raio ||
+            raio <= 0
+        ) {
+
+            raio = 5;
+        }
+
+
+        if (radiusCircle) {
+
+            map.removeLayer(
+                radiusCircle
+            );
+        }
+
+
+        if (searchLocationMarker) {
+
+            map.removeLayer(
+                searchLocationMarker
+            );
+        }
+
+
+        radiusCircle =
+            L.circle(
+                [
+                    selectedLatitude,
+                    selectedLongitude
+                ],
+                {
+                    radius: raio * 1000,
+
+                    color: "#0d6efd",
+
+                    weight: 2,
+
+                    fillColor: "#0d6efd",
+
+                    fillOpacity: .06
+                }
+            ).addTo(map);
+
+
+        const locationIcon =
+            L.divIcon({
+
+                className: "",
+
+                html:
+                    '<div class="location-marker"></div>',
+
+                iconSize: [20,20],
+
+                iconAnchor: [10,10]
+            });
+
+
+        searchLocationMarker =
+            L.marker(
+                [
+                    selectedLatitude,
+                    selectedLongitude
+                ],
+                {
+                    icon: locationIcon,
+
+                    zIndexOffset: 5000
+                }
+            )
+            .addTo(map)
+            .bindTooltip(
+                escapeHtml(selectedAddress),
+                {
+                    permanent: false,
+                    direction: 'top'
+                }
+            );
+
+
+        map.fitBounds(
+            radiusCircle.getBounds(),
+            {
+                padding: [25,25]
+            }
+        );
+
+
+        mostrarSpinner(false);
+    }
+
+
+    /* ==============================================================
+       TOKEN
+       ============================================================== */
+
+    function obterToken() {
+
+        return document
+            .querySelector(
+                '#antiForgeryForm input[name="__RequestVerificationToken"]'
+            )
+            .value;
+    }
+
+
+    /* ==============================================================
+       CAPTURAR LEAD
+       ============================================================== */
+
+    async function capturarLead(
+        estabelecimentoId
+    ) {
+
+        const ponto =
+            pontos.find(
+                p =>
+                    p.estabelecimentoId ===
+                    estabelecimentoId
+            );
+
+
+        if (!ponto) {
+
+            return;
+        }
+
+
+        const confirmar =
+            window.confirm(
+
+                `Capturar "${ponto.nome}" como lead?`
+
+            );
+
+
+        if (!confirmar) {
+
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "?handler=CapturarLead",
+                    {
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "RequestVerificationToken":
+                                obterToken()
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                estabelecimentoId:
+                                    estabelecimentoId
+                            })
+                    }
+                );
+
+
+            const result =
+                await response.json();
+
+
+            if (!result.success) {
+
+                mostrarToast(
+                    result.message,
+                    false
+                );
+
+                return;
+            }
+
+
+            ponto.tipo =
+                "lead";
+
+
+            ponto.leadId =
+                result.lead.id;
+
+
+            ponto.status =
+                result.lead.status;
+
+
+            ponto.responsavel =
+                result.lead.responsavel;
+
+
+            ponto.dataCaptura =
+                result.lead.dataCaptura;
+
+
+            carregarTodosOsPontos();
+
+
+            mostrarToast(
+                result.message,
+                true
+            );
+        }
+        catch {
+
+            mostrarToast(
+                "Não foi possível capturar o lead.",
+                false
+            );
+        }
+    }
+
+
+    /* ==============================================================
+       TOAST
+       ============================================================== */
+
+    function mostrarToast(
+        mensagem,
+        sucesso
+    ) {
+
+        const toastElement =
+            document.getElementById(
+                "geoToast"
+            );
+
+
+        document.getElementById(
+            "geoToastMessage"
+        ).textContent =
+            mensagem;
+
+
+        toastElement.classList.remove(
+            "text-bg-success",
+            "text-bg-danger"
+        );
+
+
+        toastElement.classList.add(
+
+            sucesso
+
+                ? "text-bg-success"
+
+                : "text-bg-danger"
+        );
+
+
+        bootstrap.Toast
+            .getOrCreateInstance(
+                toastElement,
+                {
+                    delay: 3500
+                }
+            )
+            .show();
+    }
+
+
+    /* ==============================================================
+       FECHAR SUGESTÕES
+       ============================================================== */
+
+    document.addEventListener(
+        "click",
+        function(event) {
+
+            if (
+                !event.target.closest(
+                    ".geo-field"
+                )
+            ) {
+
+                suggestions.style.display =
+                    "none";
+            }
+        }
+    );
+
+
+    /* ==============================================================
+       INICIALIZAÇÃO
+       ============================================================== */
+
+    carregarTodosOsPontos();
+
     </script>
+
 }
