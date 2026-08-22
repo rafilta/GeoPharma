@@ -1,32 +1,28 @@
-﻿using GeoPharma.Enums;
+﻿using Microsoft.EntityFrameworkCore;
 using GeoPharma.Models;
-using Microsoft.EntityFrameworkCore;
 
-namespace GeoPharma.Data;
-
-public class AppDbContext : DbContext
+namespace GeoPharma.Data
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
-
-    public DbSet<Usuario> Usuarios => Set<Usuario>();
-    public DbSet<Regiao> Regioes => Set<Regiao>();
-    public DbSet<Estabelecimento> Estabelecimentos => Set<Estabelecimento>();
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    public class AppDbContext : DbContext
     {
-        base.OnModelCreating(modelBuilder);
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+        {
+        }
 
-        // Usuário Administrador Principal
-        modelBuilder.Entity<Usuario>().HasData(
-            new Usuario
-            {
-                Id = 1,
-                Nome = "Administrador",
-                Email = "admin@admin.com",
-                SenhaHash = "Senha123!",
-                Tipo = TipoUsuario.Admin,
-                CriadoEm = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-            }
-        );
+        public DbSet<Estabelecimento> Estabelecimentos { get; set; } = default!;
+        public DbSet<Lead> Leads { get; set; } = default!;
+        public DbSet<Regiao> Regioes { get; set; } = default!;
+        public DbSet<Usuario> Usuarios { get; set; } = default!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // Mapeamento explícito para as tabelas do banco de dados
+            modelBuilder.Entity<Estabelecimento>().ToTable("Estabelecimentos");
+            modelBuilder.Entity<Lead>().ToTable("Leads");
+            modelBuilder.Entity<Regiao>().ToTable("Regioes");
+            modelBuilder.Entity<Usuario>().ToTable("Usuarios");
+        }
     }
 }

@@ -1,0 +1,54 @@
+﻿@page
+@model GeoPharma.Pages.Mapas.IndexModel
+@{
+    ViewData["Title"] = "Mapa de Leads";
+}
+
+<div class="container-fluid mt-3">
+    <h2><i class="fas fa-map-marked-alt text-primary"></i> Mapa de Prospecção e Leads</h2>
+
+    <!-- Elemento onde o mapa será renderizado -->
+    <div id="map" style="height: 75vh; width: 100%; border-radius: 8px;" class="shadow-sm"></div>
+</div>
+
+@section Scripts {
+    <!-- Certifique-se de incluir os arquivos CSS e JS do Leaflet no seu _Layout ou aqui -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Inicializa o mapa (centralizado, por exemplo, em coordenadas padrão ou ajustadas)
+        var map = L.map('map').setView([-23.550520, -46.633308], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Dados vindos do C# convertidos em JSON para o JavaScript consumir
+        var leadsSalvos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.LeadsSalvos));
+
+        // Varre cada lead salvo e cria o marcador vermelho com todas as informações no pop-up
+        leadsSalvos.forEach(function (lead) {
+            if (lead.latitude && lead.longitude) {
+                // Conteúdo completo do Pop-up com todas as propriedades exigidas
+                var popupHtml = `
+                    <div style="font-family: Arial, sans-serif; font-size: 13px; line-height: 1.4;">
+                        <h5 style="margin: 0 0 8px 0; color: #dc3545; border-bottom: 1px solid #ddd; padding-bottom: 4px;">
+                            <i class="fas fa-store"></i> ${lead.nome}
+                        </h5>
+                        <p style="margin: 4px 0;"><strong>CNPJ:</strong> ${lead.cnpj}</p>
+                        <p style="margin: 4px 0;"><strong>Endereço:</strong> ${lead.endereco}</p>
+                        <p style="margin: 4px 0;"><strong>Status:</strong> <span class="badge bg-info text-dark">${lead.status}</span></p>
+                        <p style="margin: 4px 0;"><strong>Responsável:</strong> ${lead.responsavel}</p>
+                        <p style="margin: 4px 0; color: #666; font-size: 11px;"><strong>Data Captura:</strong> ${lead.dataCaptura}</p>
+                    </div>
+                `;
+
+                L.marker([lead.latitude, lead.longitude])
+                  .addTo(map)
+                  .bindPopup(popupHtml);
+            }
+        });
+    </script>
+}

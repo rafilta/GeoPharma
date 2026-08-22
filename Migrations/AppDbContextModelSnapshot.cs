@@ -71,7 +71,46 @@ namespace GeoPharma.Migrations
 
                     b.HasIndex("RegiaoId");
 
-                    b.ToTable("Estabelecimentos");
+                    b.ToTable("Estabelecimentos", (string)null);
+                });
+
+            modelBuilder.Entity("GeoPharma.Models.Lead", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    b.Property<string>("Cnpj")
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Endereco")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<double>("Latitude")
+                        .HasColumnType("double");
+
+                    b.Property<double>("Longitude")
+                        .HasColumnType("double");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("VendedorResponsavel")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Leads", (string)null);
                 });
 
             modelBuilder.Entity("GeoPharma.Models.Regiao", b =>
@@ -91,7 +130,7 @@ namespace GeoPharma.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Regioes");
+                    b.ToTable("Regioes", (string)null);
                 });
 
             modelBuilder.Entity("GeoPharma.Models.Usuario", b =>
@@ -123,18 +162,7 @@ namespace GeoPharma.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Usuarios");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CriadoEm = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "admin@admin.com",
-                            Nome = "Administrador",
-                            SenhaHash = "Senha123!",
-                            Tipo = 1
-                        });
+                    b.ToTable("Usuarios", (string)null);
                 });
 
             modelBuilder.Entity("GeoPharma.Models.Estabelecimento", b =>
