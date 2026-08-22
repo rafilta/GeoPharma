@@ -3,652 +3,757 @@ using GeoPharma.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using System.Text.RegularExpressions;
+using System.Globalization;
+using System.Text;
 
-namespace GeoPharma.Pages.Mapas;
-
-public class IndexModel : PageModel
+namespace GeoPharma.Pages.Mapas
 {
-    private readonly AppDbContext _context;
-
-    public IndexModel(AppDbContext context)
+    public class IndexModel : PageModel
     {
-        _context = context;
-    }
+        private readonly AppDbContext _context;
+        private readonly IConfiguration _configuration;
 
-    public IList<PontoMapaViewModel> Pontos { get; set; }
-        = new List<PontoMapaViewModel>();
-
-    public int TotalEstabelecimentos { get; set; }
-    public int TotalOportunidades { get; set; }
-    public int TotalLeads { get; set; }
-    public int TotalEmAndamento { get; set; }
-    public int TotalNegociando { get; set; }
-    public int TotalConvertidos { get; set; }
-
-    public async Task OnGetAsync()
-    {
-        var estabelecimentos = await _context.Clientes
-            .AsNoTracking()
-            .Where(e =>
-                e.Ativo &&
-                e.Latitude.HasValue &&
-                e.Longitude.HasValue)
-            .ToListAsync();
-
-        var leads = await _context.Leads
-            .AsNoTracking()
-            .ToListAsync();
-
-        var pontos = new List<PontoMapaViewModel>();
-
-        /*
-         * ============================================================
-         * ESTABELECIMENTOS
-         * ============================================================
-         *
-         * Um estabelecimento representa uma oportunidade de mercado.
-         *
-         * Se já existir um Lead correspondente, ele não será exibido
-         * novamente como oportunidade.
-         */
-        foreach (var estabelecimento in estabelecimentos)
+        public IndexModel(
+            AppDbContext context,
+            IConfiguration configuration)
         {
-            var leadCorrespondente = EncontrarLeadCorrespondente(
-                estabelecimento,
-                leads);
-
-            if (leadCorrespondente != null)
-            {
-                continue;
-            }
-
-            pontos.Add(new PontoMapaViewModel
-            {
-                Tipo = "oportunidade",
-
-                EstabelecimentoId = estabelecimento.Id,
-
-                Nome = ObterNomeEstabelecimento(estabelecimento),
-
-                Cnpj = string.IsNullOrWhiteSpace(estabelecimento.Cnpj)
-                    ? "Não informado"
-                    : estabelecimento.Cnpj,
-
-                Endereco = MontarEndereco(estabelecimento),
-
-                Bairro = estabelecimento.Bairro ?? "",
-
-                Cidade = estabelecimento.Cidade ?? "",
-
-                Uf = estabelecimento.Uf ?? "",
-
-                Regiao = estabelecimento.Regiao ?? "",
-
-                Latitude = estabelecimento.Latitude!.Value,
-
-                Longitude = estabelecimento.Longitude!.Value,
-
-                Status = "Não capturado",
-
-                Responsavel = "",
-
-                DataCaptura = ""
-            });
+            _context = context;
+            _configuration = configuration;
         }
 
-        /*
-         * ============================================================
-         * LEADS
-         * ============================================================
-         */
-        foreach (var lead in leads)
+        public string GoogleMapsApiKey { get; set; } = "";
+
+        public IList<ClienteMapaViewModel> ClientesMapa { get; set; }
+            = new List<ClienteMapaViewModel>();
+
+        public IList<LeadMapaViewModel> LeadsMapa { get; set; }
+            = new List<LeadMapaViewModel>();
+
+        public int TotalClientes { get; set; }
+        public int TotalLeads { get; set; }
+        public int TotalEmAndamento { get; set; }
+        public int TotalNegociando { get; set; }
+
+        // ============================================================
+        // CARREGAMENTO DO MAPA
+        // ============================================================
+
+        public async Task OnGetAsync()
         {
-            pontos.Add(new PontoMapaViewModel
-            {
-                Tipo = "lead",
+            GoogleMapsApiKey =
+                _configuration["GoogleMaps:ApiKey"] ?? "";
 
-                LeadId = lead.Id,
+            // --------------------------------------------------------
+            // CLIENTES
+            // --------------------------------------------------------
 
-                Nome = lead.Nome,
+            var clientes = await _context.Clientes
+                .AsNoTracking()
+                .Where(c =>
+                    c.Latitude.HasValue &&
+                    c.Longitude.HasValue)
+                .OrderBy(c => c.NomeFantasia)
+                .ToListAsync();
 
-                Cnpj = string.IsNullOrWhiteSpace(lead.Cnpj)
-                    ? "Não informado"
-                    : lead.Cnpj,
+            ClientesMapa = clientes
+                .Select(c => new ClienteMapaViewModel
+                {
+                    Id = c.Id,
 
-                Endereco = lead.Endereco,
+                    Nome = ObterNomeCliente(c),
 
-                Latitude = lead.Latitude,
+                    RazaoSocial =
+                        string.IsNullOrWhiteSpace(c.RazaoSocial)
+                            ? "Não informada"
+                            : c.RazaoSocial,
 
-                Longitude = lead.Longitude,
+                    Cnpj =
+                        string.IsNullOrWhiteSpace(c.Cnpj)
+                            ? "Não informado"
+                            : c.Cnpj,
 
-                Status = NormalizarStatus(lead.Status),
+                    Endereco =
+                        MontarEnderecoCliente(c),
 
-                Responsavel =
-                    string.IsNullOrWhiteSpace(lead.VendedorResponsavel)
-                        ? "Não informado"
-                        : lead.VendedorResponsavel,
+                    Regiao =
+                        c.Regiao ?? "",
 
-                DataCaptura =
-                    lead.DataCriacao.ToString("dd/MM/yyyy HH:mm")
-            });
+                    Latitude =
+                        c.Latitude!.Value,
+
+                    Longitude =
+                        c.Longitude!.Value,
+
+                    Ativo =
+                        c.Ativo
+                })
+                .ToList();
+
+            // --------------------------------------------------------
+            // LEADS
+            // --------------------------------------------------------
+
+            var leads = await _context.Leads
+                .AsNoTracking()
+                .OrderByDescending(l => l.DataCriacao)
+                .ToListAsync();
+
+            LeadsMapa = leads
+                .Select(l => new LeadMapaViewModel
+                {
+                    Id = l.Id,
+
+                    Nome = l.Nome,
+
+                    Cnpj =
+                        string.IsNullOrWhiteSpace(l.Cnpj)
+                            ? "Não informado"
+                            : l.Cnpj,
+
+                    Endereco =
+                        string.IsNullOrWhiteSpace(l.Endereco)
+                            ? "Endereço não informado"
+                            : l.Endereco,
+
+                    Latitude =
+                        l.Latitude,
+
+                    Longitude =
+                        l.Longitude,
+
+                    Status =
+                        string.IsNullOrWhiteSpace(l.Status)
+                            ? "Em Andamento"
+                            : l.Status,
+
+                    Responsavel =
+                        string.IsNullOrWhiteSpace(l.VendedorResponsavel)
+                            ? "Não informado"
+                            : l.VendedorResponsavel,
+
+                    DataCaptura =
+                        l.DataCriacao.ToString(
+                            "dd/MM/yyyy HH:mm"
+                        )
+                })
+                .ToList();
+
+            // --------------------------------------------------------
+            // KPIs
+            // --------------------------------------------------------
+
+            TotalClientes =
+                await _context.Clientes.CountAsync();
+
+            TotalLeads =
+                await _context.Leads.CountAsync();
+
+            TotalEmAndamento =
+                await _context.Leads.CountAsync(l =>
+                    l.Status == "Em Andamento" ||
+                    l.Status == "Em andamento");
+
+            TotalNegociando =
+                await _context.Leads.CountAsync(l =>
+                    l.Status == "Negociando");
         }
 
-        Pontos = pontos;
+        // ============================================================
+        // CAPTURAR LEAD
+        // ============================================================
 
-        /*
-         * ============================================================
-         * INDICADORES
-         * ============================================================
-         */
-        TotalEstabelecimentos = estabelecimentos.Count;
-
-        TotalOportunidades =
-            Pontos.Count(p => p.Tipo == "oportunidade");
-
-        TotalLeads =
-            Pontos.Count(p => p.Tipo == "lead");
-
-        TotalEmAndamento =
-            Pontos.Count(p =>
-                p.Tipo == "lead" &&
-                NormalizarStatus(p.Status) == "Em Andamento");
-
-        TotalNegociando =
-            Pontos.Count(p =>
-                p.Tipo == "lead" &&
-                NormalizarStatus(p.Status) == "Negociando");
-
-        TotalConvertidos =
-            Pontos.Count(p =>
-                p.Tipo == "lead" &&
-                NormalizarStatus(p.Status) == "Convertido");
-    }
-
-    /*
-     * ================================================================
-     * CAPTURA UM ESTABELECIMENTO COMO LEAD
-     * ================================================================
-     */
-    public async Task<IActionResult> OnPostCapturarLeadAsync(
-        [FromBody] CapturarLeadInputModel model)
-    {
-        if (model == null || model.EstabelecimentoId <= 0)
+        public async Task<IActionResult> OnPostCapturarLeadAsync(
+            [FromBody] CapturarLeadMapaInput model)
         {
-            return new JsonResult(new
-            {
-                success = false,
-                message = "Estabelecimento inválido."
-            });
-        }
-
-        var estabelecimento =
-            await _context.Clientes
-                .FirstOrDefaultAsync(e =>
-                    e.Id == model.EstabelecimentoId &&
-                    e.Ativo);
-
-        if (estabelecimento == null)
-        {
-            return new JsonResult(new
-            {
-                success = false,
-                message = "Estabelecimento não encontrado."
-            });
-        }
-
-        /*
-         * ------------------------------------------------------------
-         * DUPLICIDADE POR CNPJ
-         * ------------------------------------------------------------
-         */
-        if (!string.IsNullOrWhiteSpace(estabelecimento.Cnpj))
-        {
-            var cnpjNormalizado =
-                NormalizarCnpj(estabelecimento.Cnpj);
-
-            var leadsExistentes =
-                await _context.Leads
-                    .Where(l => l.Cnpj != null)
-                    .ToListAsync();
-
-            var duplicadoCnpj =
-                leadsExistentes.Any(l =>
-                    NormalizarCnpj(l.Cnpj) == cnpjNormalizado);
-
-            if (duplicadoCnpj)
+            if (model == null)
             {
                 return new JsonResult(new
                 {
                     success = false,
-                    message =
-                        "Este CNPJ já está cadastrado na carteira de leads."
+                    message = "Dados inválidos."
                 });
             }
-        }
 
-        /*
-         * ------------------------------------------------------------
-         * DUPLICIDADE POR NOME + ENDEREÇO
-         * ------------------------------------------------------------
-         */
-        var nome =
-            ObterNomeEstabelecimento(estabelecimento);
+            if (string.IsNullOrWhiteSpace(model.Nome))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "O estabelecimento não possui nome válido."
+                });
+            }
 
-        var endereco =
-            MontarEndereco(estabelecimento);
+            if (model.Latitude == 0 ||
+                model.Longitude == 0)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "O estabelecimento não possui localização válida."
+                });
+            }
 
-        var nomeNormalizado =
-            NormalizarTexto(nome);
+            // --------------------------------------------------------
+            // BLOQUEIA CLIENTE EXISTENTE
+            // --------------------------------------------------------
 
-        var enderecoNormalizado =
-            NormalizarTexto(endereco);
+            var clientes =
+                await _context.Clientes
+                    .AsNoTracking()
+                    .Where(c =>
+                        c.Latitude.HasValue &&
+                        c.Longitude.HasValue)
+                    .ToListAsync();
 
-        var leadsParaComparacao =
-            await _context.Leads.ToListAsync();
+            foreach (var cliente in clientes)
+            {
+                if (!string.IsNullOrWhiteSpace(model.Cnpj) &&
+                    !string.IsNullOrWhiteSpace(cliente.Cnpj))
+                {
+                    var cnpjNovo =
+                        SomenteNumeros(model.Cnpj);
 
-        var duplicado =
-            leadsParaComparacao.Any(l =>
-                NormalizarTexto(l.Nome) == nomeNormalizado &&
-                NormalizarTexto(l.Endereco) == enderecoNormalizado);
+                    var cnpjCliente =
+                        SomenteNumeros(cliente.Cnpj);
 
-        if (duplicado)
-        {
+                    if (cnpjNovo.Length == 14 &&
+                        cnpjNovo == cnpjCliente)
+                    {
+                        return new JsonResult(new
+                        {
+                            success = false,
+
+                            message =
+                                $"Este CNPJ já pertence ao cliente " +
+                                $"{ObterNomeCliente(cliente)}."
+                        });
+                    }
+                }
+
+                var distancia =
+                    CalcularDistanciaMetros(
+                        model.Latitude,
+                        model.Longitude,
+                        cliente.Latitude!.Value,
+                        cliente.Longitude!.Value
+                    );
+
+                if (distancia <= 50)
+                {
+                    return new JsonResult(new
+                    {
+                        success = false,
+
+                        message =
+                            $"Existe um cliente cadastrado neste local: " +
+                            $"{ObterNomeCliente(cliente)}."
+                    });
+                }
+            }
+
+            // --------------------------------------------------------
+            // BLOQUEIA LEAD EXISTENTE
+            // --------------------------------------------------------
+
+            var leads =
+                await _context.Leads
+                    .AsNoTracking()
+                    .ToListAsync();
+
+            var nomeNormalizado =
+                NormalizarTexto(model.Nome);
+
+            foreach (var leadExistente in leads)
+            {
+                if (!string.IsNullOrWhiteSpace(model.Cnpj) &&
+                    !string.IsNullOrWhiteSpace(leadExistente.Cnpj))
+                {
+                    var cnpjNovo =
+                        SomenteNumeros(model.Cnpj);
+
+                    var cnpjLead =
+                        SomenteNumeros(leadExistente.Cnpj);
+
+                    if (cnpjNovo.Length == 14 &&
+                        cnpjNovo == cnpjLead)
+                    {
+                        return new JsonResult(new
+                        {
+                            success = false,
+
+                            message =
+                                $"Este CNPJ já foi capturado por " +
+                                $"{leadExistente.VendedorResponsavel ?? "outro representante"}."
+                        });
+                    }
+                }
+
+                var distancia =
+                    CalcularDistanciaMetros(
+                        model.Latitude,
+                        model.Longitude,
+                        leadExistente.Latitude,
+                        leadExistente.Longitude
+                    );
+
+                if (distancia <= 50)
+                {
+                    return new JsonResult(new
+                    {
+                        success = false,
+
+                        message =
+                            $"Este ponto já foi capturado por " +
+                            $"{leadExistente.VendedorResponsavel ?? "outro representante"}."
+                    });
+                }
+
+                var mesmoNome =
+                    NormalizarTexto(
+                        leadExistente.Nome
+                    ) == nomeNormalizado;
+
+                if (mesmoNome &&
+                    distancia <= 200)
+                {
+                    return new JsonResult(new
+                    {
+                        success = false,
+
+                        message =
+                            $"Já existe um lead para " +
+                            $"{leadExististenteNome(leadExistente)}."
+                    });
+                }
+            }
+
+            // --------------------------------------------------------
+            // CRIAÇÃO
+            // --------------------------------------------------------
+
+            var responsavel =
+                ObterUsuarioAtual();
+
+            var lead = new Lead
+            {
+                Nome =
+                    model.Nome.Trim(),
+
+                Cnpj =
+                    string.IsNullOrWhiteSpace(model.Cnpj)
+                        ? null
+                        : model.Cnpj.Trim(),
+
+                Endereco =
+                    string.IsNullOrWhiteSpace(model.Endereco)
+                        ? "Endereço não informado"
+                        : model.Endereco.Trim(),
+
+                Latitude =
+                    model.Latitude,
+
+                Longitude =
+                    model.Longitude,
+
+                Status =
+                    "Em Andamento",
+
+                VendedorResponsavel =
+                    responsavel,
+
+                DataCriacao =
+                    DateTime.Now
+            };
+
+            _context.Leads.Add(lead);
+
+            await _context.SaveChangesAsync();
+
             return new JsonResult(new
             {
-                success = false,
+                success = true,
+
                 message =
-                    "Este estabelecimento já foi capturado anteriormente."
+                    $"Lead capturado por {responsavel}.",
+
+                lead = new
+                {
+                    id =
+                        lead.Id,
+
+                    nome =
+                        lead.Nome,
+
+                    cnpj =
+                        string.IsNullOrWhiteSpace(lead.Cnpj)
+                            ? "Não informado"
+                            : lead.Cnpj,
+
+                    endereco =
+                        lead.Endereco,
+
+                    latitude =
+                        lead.Latitude,
+
+                    longitude =
+                        lead.Longitude,
+
+                    status =
+                        lead.Status,
+
+                    responsavel =
+                        lead.VendedorResponsavel,
+
+                    dataCaptura =
+                        lead.DataCriacao.ToString(
+                            "dd/MM/yyyy HH:mm"
+                        )
+                }
             });
         }
 
-        /*
-         * ------------------------------------------------------------
-         * RESPONSÁVEL
-         * ------------------------------------------------------------
-         *
-         * Quando a autenticação real estiver ativa,
-         * User.Identity.Name identificará o vendedor.
-         *
-         * O fallback evita quebrar o sistema atual.
-         */
-        var responsavel =
-            ObterUsuarioAtual();
+        // ============================================================
+        // STATUS
+        // ============================================================
 
-        var lead = new Lead
+        public async Task<IActionResult> OnPostAtualizarStatusAsync(
+            [FromBody] AtualizarStatusMapaInput model)
         {
-            Nome = nome,
-
-            Cnpj = estabelecimento.Cnpj,
-
-            Endereco = endereco,
-
-            Latitude = estabelecimento.Latitude!.Value,
-
-            Longitude = estabelecimento.Longitude!.Value,
-
-            Status = "Em Andamento",
-
-            VendedorResponsavel = responsavel,
-
-            DataCriacao = DateTime.Now
-        };
-
-        _context.Leads.Add(lead);
-
-        await _context.SaveChangesAsync();
-
-        return new JsonResult(new
-        {
-            success = true,
-
-            message =
-                $"Lead capturado com sucesso por {responsavel}.",
-
-            lead = new
+            var permitidos = new[]
             {
-                id = lead.Id,
-                nome = lead.Nome,
-                cnpj = string.IsNullOrWhiteSpace(lead.Cnpj)
-                    ? "Não informado"
-                    : lead.Cnpj,
-                endereco = lead.Endereco,
-                latitude = lead.Latitude,
-                longitude = lead.Longitude,
-                status = lead.Status,
-                responsavel = lead.VendedorResponsavel,
-                dataCaptura =
-                    lead.DataCriacao.ToString("dd/MM/yyyy HH:mm")
+                "Em Andamento",
+                "Negociando",
+                "Convertido",
+                "Perdido"
+            };
+
+            if (model == null ||
+                model.LeadId <= 0)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "Lead inválido."
+                });
             }
-        });
-    }
 
-    /*
-     * ================================================================
-     * ALTERAÇÃO DE STATUS DIRETAMENTE PELO MAPA
-     * ================================================================
-     */
-    public async Task<IActionResult> OnPostAtualizarStatusAsync(
-        [FromBody] AtualizarStatusInputModel model)
-    {
-        if (model == null || model.LeadId <= 0)
-        {
-            return new JsonResult(new
+            var novoStatus =
+                permitidos.FirstOrDefault(s =>
+                    string.Equals(
+                        s,
+                        model.Status,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                );
+
+            if (novoStatus == null)
             {
-                success = false,
-                message = "Lead inválido."
-            });
-        }
-
-        var statusPermitidos = new[]
-        {
-            "Em Andamento",
-            "Negociando",
-            "Convertido",
-            "Perdido"
-        };
-
-        var novoStatus =
-            statusPermitidos.FirstOrDefault(s =>
-                string.Equals(
-                    s,
-                    model.Status?.Trim(),
-                    StringComparison.OrdinalIgnoreCase));
-
-        if (novoStatus == null)
-        {
-            return new JsonResult(new
-            {
-                success = false,
-                message = "Status inválido."
-            });
-        }
-
-        var lead =
-            await _context.Leads
-                .FirstOrDefaultAsync(l =>
-                    l.Id == model.LeadId);
-
-        if (lead == null)
-        {
-            return new JsonResult(new
-            {
-                success = false,
-                message = "Lead não encontrado."
-            });
-        }
-
-        lead.Status = novoStatus;
-
-        await _context.SaveChangesAsync();
-
-        return new JsonResult(new
-        {
-            success = true,
-            message = "Status atualizado com sucesso.",
-            status = novoStatus
-        });
-    }
-
-    /*
-     * ================================================================
-     * MÉTODOS AUXILIARES
-     * ================================================================
-     */
-
-    private Lead? EncontrarLeadCorrespondente(
-        Cliente estabelecimento,
-        IEnumerable<Lead> leads)
-    {
-        /*
-         * Primeiro critério: CNPJ.
-         */
-        if (!string.IsNullOrWhiteSpace(estabelecimento.Cnpj))
-        {
-            var cnpj =
-                NormalizarCnpj(estabelecimento.Cnpj);
-
-            var leadPorCnpj =
-                leads.FirstOrDefault(l =>
-                    !string.IsNullOrWhiteSpace(l.Cnpj) &&
-                    NormalizarCnpj(l.Cnpj) == cnpj);
-
-            if (leadPorCnpj != null)
-            {
-                return leadPorCnpj;
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "Status inválido."
+                });
             }
+
+            var lead =
+                await _context.Leads
+                    .FirstOrDefaultAsync(l =>
+                        l.Id == model.LeadId
+                    );
+
+            if (lead == null)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "Lead não encontrado."
+                });
+            }
+
+            lead.Status =
+                novoStatus;
+
+            await _context.SaveChangesAsync();
+
+            return new JsonResult(new
+            {
+                success = true,
+                status = novoStatus,
+                message = "Status atualizado."
+            });
         }
 
-        /*
-         * Segundo critério: nome + endereço.
-         */
-        var nome =
-            NormalizarTexto(
-                ObterNomeEstabelecimento(estabelecimento));
+        // ============================================================
+        // AUXILIARES
+        // ============================================================
 
-        var endereco =
-            NormalizarTexto(
-                MontarEndereco(estabelecimento));
-
-        return leads.FirstOrDefault(l =>
-            NormalizarTexto(l.Nome) == nome &&
-            NormalizarTexto(l.Endereco) == endereco);
-    }
-
-    private string ObterUsuarioAtual()
-    {
-        var usuario =
-            User.Identity?.Name;
-
-        if (string.IsNullOrWhiteSpace(usuario))
+        private string ObterUsuarioAtual()
         {
-            return "Admin";
+            var nome =
+                User.Identity?.Name;
+
+            if (string.IsNullOrWhiteSpace(nome))
+            {
+                return "Admin";
+            }
+
+            if (nome.Contains("@"))
+            {
+                nome =
+                    nome.Split('@')[0];
+            }
+
+            return nome;
         }
 
-        if (usuario.Contains("@"))
+        private static string leadExististenteNome(
+            Lead lead)
         {
-            usuario =
-                usuario.Split('@')[0];
+            return string.IsNullOrWhiteSpace(lead.Nome)
+                ? "lead existente"
+                : lead.Nome;
         }
 
-        if (string.IsNullOrWhiteSpace(usuario))
+        private static string ObterNomeCliente(
+            Cliente cliente)
         {
-            return "Admin";
-        }
-
-        return char.ToUpper(usuario[0]) +
-               usuario.Substring(1);
-    }
-
-    private static string ObterNomeEstabelecimento(
-        Cliente estabelecimento)
-    {
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.NomeFantasia))
-        {
-            return estabelecimento.NomeFantasia;
-        }
-
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.RazaoSocial))
-        {
-            return estabelecimento.RazaoSocial;
-        }
-
-        return $"Estabelecimento #{estabelecimento.Id}";
-    }
-
-    private static string MontarEndereco(
-        Cliente estabelecimento)
-    {
-        var partes = new List<string>();
-
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.Logradouro))
-        {
-            var endereco =
-                estabelecimento.Logradouro;
+            if (!string.IsNullOrWhiteSpace(
+                cliente.NomeFantasia))
+            {
+                return cliente.NomeFantasia;
+            }
 
             if (!string.IsNullOrWhiteSpace(
-                    estabelecimento.Numero))
+                cliente.RazaoSocial))
             {
-                endereco +=
-                    $", {estabelecimento.Numero}";
+                return cliente.RazaoSocial;
             }
 
-            partes.Add(endereco);
+            return $"Cliente #{cliente.Id}";
         }
 
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.Bairro))
+        private static string MontarEnderecoCliente(
+            Cliente cliente)
         {
-            partes.Add(estabelecimento.Bairro);
+            var partes =
+                new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(
+                cliente.Logradouro))
+            {
+                var linha =
+                    cliente.Logradouro;
+
+                if (!string.IsNullOrWhiteSpace(
+                    cliente.Numero))
+                {
+                    linha +=
+                        $", {cliente.Numero}";
+                }
+
+                partes.Add(linha);
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                cliente.Bairro))
+            {
+                partes.Add(
+                    cliente.Bairro
+                );
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                cliente.Cidade))
+            {
+                var cidade =
+                    cliente.Cidade;
+
+                if (!string.IsNullOrWhiteSpace(
+                    cliente.Uf))
+                {
+                    cidade +=
+                        $" - {cliente.Uf}";
+                }
+
+                partes.Add(cidade);
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                cliente.Cep))
+            {
+                partes.Add(
+                    $"CEP {cliente.Cep}"
+                );
+            }
+
+            return partes.Count == 0
+                ? "Endereço não informado"
+                : string.Join(" | ", partes);
         }
 
-        var cidadeUf = "";
-
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.Cidade))
+        private static string SomenteNumeros(
+            string? valor)
         {
-            cidadeUf = estabelecimento.Cidade;
+            if (string.IsNullOrWhiteSpace(valor))
+            {
+                return "";
+            }
+
+            return new string(
+                valor
+                    .Where(char.IsDigit)
+                    .ToArray()
+            );
         }
 
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.Uf))
+        private static string NormalizarTexto(
+            string? texto)
         {
-            cidadeUf +=
-                string.IsNullOrWhiteSpace(cidadeUf)
-                    ? estabelecimento.Uf
-                    : $" - {estabelecimento.Uf}";
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                return "";
+            }
+
+            texto =
+                texto
+                    .Trim()
+                    .ToUpperInvariant()
+                    .Normalize(
+                        NormalizationForm.FormD
+                    );
+
+            var chars =
+                texto.Where(c =>
+                    CharUnicodeInfo
+                        .GetUnicodeCategory(c) !=
+                    UnicodeCategory.NonSpacingMark
+                );
+
+            return new string(chars.ToArray())
+                .Normalize(
+                    NormalizationForm.FormC
+                );
         }
 
-        if (!string.IsNullOrWhiteSpace(cidadeUf))
+        private static double CalcularDistanciaMetros(
+            double lat1,
+            double lon1,
+            double lat2,
+            double lon2)
         {
-            partes.Add(cidadeUf);
+            const double raioTerra =
+                6371000;
+
+            var latitude1 =
+                GrausParaRadianos(lat1);
+
+            var latitude2 =
+                GrausParaRadianos(lat2);
+
+            var deltaLatitude =
+                GrausParaRadianos(
+                    lat2 - lat1
+                );
+
+            var deltaLongitude =
+                GrausParaRadianos(
+                    lon2 - lon1
+                );
+
+            var a =
+                Math.Sin(deltaLatitude / 2) *
+                Math.Sin(deltaLatitude / 2) +
+
+                Math.Cos(latitude1) *
+                Math.Cos(latitude2) *
+
+                Math.Sin(deltaLongitude / 2) *
+                Math.Sin(deltaLongitude / 2);
+
+            var c =
+                2 *
+                Math.Atan2(
+                    Math.Sqrt(a),
+                    Math.Sqrt(1 - a)
+                );
+
+            return raioTerra * c;
         }
 
-        if (!string.IsNullOrWhiteSpace(
-                estabelecimento.Cep))
+        private static double GrausParaRadianos(
+            double graus)
         {
-            partes.Add($"CEP {estabelecimento.Cep}");
+            return graus *
+                   Math.PI /
+                   180;
         }
-
-        return partes.Count > 0
-            ? string.Join(" | ", partes)
-            : "Endereço não informado";
     }
 
-    private static string NormalizarStatus(
-        string? status)
+    // ================================================================
+    // VIEW MODELS
+    // ================================================================
+
+    public class ClienteMapaViewModel
     {
-        if (string.IsNullOrWhiteSpace(status))
-        {
-            return "Em Andamento";
-        }
+        public int Id { get; set; }
 
-        if (status.Equals(
-            "Em andamento",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return "Em Andamento";
-        }
+        public string Nome { get; set; } = "";
 
-        if (status.Equals(
-            "Negociando",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return "Negociando";
-        }
+        public string RazaoSocial { get; set; } = "";
 
-        if (status.Equals(
-            "Convertido",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return "Convertido";
-        }
+        public string Cnpj { get; set; } = "";
 
-        if (status.Equals(
-            "Perdido",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return "Perdido";
-        }
+        public string Endereco { get; set; } = "";
 
-        return status.Trim();
+        public string Regiao { get; set; } = "";
+
+        public double Latitude { get; set; }
+
+        public double Longitude { get; set; }
+
+        public bool Ativo { get; set; }
     }
 
-    private static string NormalizarCnpj(
-        string? cnpj)
+    public class LeadMapaViewModel
     {
-        if (string.IsNullOrWhiteSpace(cnpj))
-        {
-            return "";
-        }
+        public int Id { get; set; }
 
-        return Regex.Replace(
-            cnpj,
-            @"\D",
-            "");
+        public string Nome { get; set; } = "";
+
+        public string Cnpj { get; set; } = "";
+
+        public string Endereco { get; set; } = "";
+
+        public double Latitude { get; set; }
+
+        public double Longitude { get; set; }
+
+        public string Status { get; set; } = "";
+
+        public string Responsavel { get; set; } = "";
+
+        public string DataCaptura { get; set; } = "";
     }
 
-    private static string NormalizarTexto(
-        string? texto)
+    public class CapturarLeadMapaInput
     {
-        return (texto ?? "")
-            .Trim()
-            .ToUpperInvariant();
+        public string Nome { get; set; } = "";
+
+        public string? RazaoSocial { get; set; }
+
+        public string? Cnpj { get; set; }
+
+        public string Endereco { get; set; } = "";
+
+        public double Latitude { get; set; }
+
+        public double Longitude { get; set; }
     }
-}
 
+    public class AtualizarStatusMapaInput
+    {
+        public int LeadId { get; set; }
 
-/*
- * ===================================================================
- * VIEW MODEL DO MAPA
- * ===================================================================
- */
-public class PontoMapaViewModel
-{
-    public string Tipo { get; set; } = "";
-
-    public int? EstabelecimentoId { get; set; }
-
-    public int? LeadId { get; set; }
-
-    public string Nome { get; set; } = "";
-
-    public string Cnpj { get; set; } = "";
-
-    public string Endereco { get; set; } = "";
-
-    public string Bairro { get; set; } = "";
-
-    public string Cidade { get; set; } = "";
-
-    public string Uf { get; set; } = "";
-
-    public string Regiao { get; set; } = "";
-
-    public double Latitude { get; set; }
-
-    public double Longitude { get; set; }
-
-    public string Status { get; set; } = "";
-
-    public string Responsavel { get; set; } = "";
-
-    public string DataCaptura { get; set; } = "";
-}
-
-
-public class CapturarLeadInputModel
-{
-    public int EstabelecimentoId { get; set; }
-}
-
-
-public class AtualizarStatusInputModel
-{
-    public int LeadId { get; set; }
-
-    public string Status { get; set; } = "";
+        public string Status { get; set; } = "";
+    }
 }
