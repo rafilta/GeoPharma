@@ -1,0 +1,92 @@
+﻿@page
+@model GeoPharma.Pages.Usuarios.IndexModel
+@{
+    ViewData["Title"] = "Usuários";
+}
+
+<div class="container-fluid px-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="mb-1">Usuários</h4>
+            <small class="text-muted">
+                Gerencie os usuários do GeoPharma.
+            </small>
+        </div>
+
+        <a asp-page="./Create" class="btn btn-primary">
+            <i class="fa-solid fa-plus me-1"></i>
+            Novo Usuário
+        </a>
+    </div>
+
+    @if (TempData["MensagemSucesso"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["MensagemSucesso"]
+        </div>
+    }
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+
+            @if (!Model.Usuarios.Any())
+            {
+                <div class="text-center text-muted py-5">
+                    Nenhum usuário cadastrado.
+                </div>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nome</th>
+                                <th>E-mail</th>
+                                <th>Tipo</th>
+                                <th>Cadastro</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @foreach (var usuario in Model.Usuarios)
+                            {
+                                <tr>
+                                    <td>
+                                        <strong>@usuario.Nome</strong>
+                                    </td>
+
+                                    <td>
+                                        @usuario.Email
+                                    </td>
+
+                                    <td>
+                                        @if (usuario.Tipo == GeoPharma.Enums.TipoUsuario.Admin)
+                                        {
+                                            <span class="badge bg-dark">
+                                                Administrador
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">
+                                                Vendedor
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @usuario.CriadoEm.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+        </div>
+    </div>
+
+</div>

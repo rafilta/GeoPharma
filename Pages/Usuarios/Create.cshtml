@@ -1,0 +1,211 @@
+﻿@page
+@model GeoPharma.Pages.Usuarios.CreateModel
+@using GeoPharma.Enums
+
+@{
+    ViewData["Title"] = "Novo Usuário";
+}
+
+<div class="container-fluid px-4 py-4">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Novo Usuário</h2>
+            <p class="text-muted mb-0">
+                Cadastre um novo usuário para acesso ao GeoPharma.
+            </p>
+        </div>
+
+        <a asp-page="./Index" class="btn btn-outline-secondary px-4">
+            Voltar
+        </a>
+    </div>
+
+    <form method="post">
+
+        <div asp-validation-summary="ModelOnly"
+             class="alert alert-danger"
+             role="alert">
+        </div>
+
+        <!-- Dados do usuário -->
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-white border-bottom py-3">
+                <h5 class="fw-semibold mb-0">
+                    Dados do Usuário
+                </h5>
+            </div>
+
+            <div class="card-body p-4">
+
+                <div class="row g-4">
+
+                    <!-- Nome -->
+                    <div class="col-lg-5">
+                        <label asp-for="Input.Nome"
+                               class="form-label fw-semibold">
+                            Nome completo
+                        </label>
+
+                        <input asp-for="Input.Nome"
+                               class="form-control form-control-lg"
+                               placeholder="Digite o nome completo"
+                               autocomplete="off" />
+
+                        <span asp-validation-for="Input.Nome"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <!-- E-mail -->
+                    <div class="col-lg-5">
+                        <label asp-for="Input.Email"
+                               class="form-label fw-semibold">
+                            E-mail
+                        </label>
+
+                        <input asp-for="Input.Email"
+                               class="form-control form-control-lg"
+                               placeholder="usuario@empresa.com"
+                               autocomplete="off" />
+
+                        <span asp-validation-for="Input.Email"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <!-- Tipo -->
+                    <div class="col-lg-2">
+                        <label asp-for="Input.Tipo"
+                               class="form-label fw-semibold">
+                            Perfil
+                        </label>
+
+                        <select asp-for="Input.Tipo"
+                                class="form-select form-select-lg">
+
+                            <option value="@TipoUsuario.Vendedor">
+                                Vendedor
+                            </option>
+
+                            <option value="@TipoUsuario.Admin">
+                                Administrador
+                            </option>
+
+                        </select>
+
+                        <span asp-validation-for="Input.Tipo"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Segurança -->
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-header bg-white border-bottom py-3">
+                <div>
+                    <h5 class="fw-semibold mb-0">Segurança</h5>
+                    <small class="text-muted">
+                        Defina a senha inicial de acesso do usuário.
+                    </small>
+                </div>
+            </div>
+
+            <div class="card-body p-4">
+
+                <div class="row g-4">
+
+                    <!-- Senha -->
+                    <div class="col-md-6">
+                        <label asp-for="Input.Senha"
+                               class="form-label fw-semibold">
+                            Senha
+                        </label>
+
+                        <input asp-for="Input.Senha"
+                               class="form-control form-control-lg"
+                               placeholder="Digite a senha"
+                               autocomplete="new-password" />
+
+                        <div class="form-text">
+                            Utilize no mínimo 6 caracteres.
+                        </div>
+
+                        <span asp-validation-for="Input.Senha"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                    <!-- Confirmação -->
+                    <div class="col-md-6">
+                        <label asp-for="Input.ConfirmarSenha"
+                               class="form-label fw-semibold">
+                            Confirmar senha
+                        </label>
+
+                        <input asp-for="Input.ConfirmarSenha"
+                               class="form-control form-control-lg"
+                               placeholder="Digite novamente a senha"
+                               autocomplete="new-password" />
+
+                        <div class="form-text">
+                            Digite exatamente a mesma senha.
+                        </div>
+
+                        <span asp-validation-for="Input.ConfirmarSenha"
+                              class="text-danger small">
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Rodapé -->
+        <div class="card border-0 shadow-sm">
+
+            <div class="card-body py-3 px-4">
+
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <small class="text-muted">
+                        Todos os campos são obrigatórios.
+                    </small>
+
+                    <div class="d-flex gap-2">
+
+                        <a asp-page="./Index"
+                           class="btn btn-outline-secondary px-4">
+                            Cancelar
+                        </a>
+
+                        <button type="submit"
+                                class="btn btn-primary px-4">
+
+                            <i class="fa-solid fa-floppy-disk me-2"></i>
+                            Salvar Usuário
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </form>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
