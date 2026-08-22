@@ -3,6 +3,7 @@ using System;
 using GeoPharma.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -16,14 +17,18 @@ namespace GeoPharma.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "8.0.0")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
-            modelBuilder.Entity("GeoPharma.Models.Estabelecimento", b =>
+            MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
+
+            modelBuilder.Entity("GeoPharma.Models.Cliente", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("Ativo")
                         .HasColumnType("tinyint(1)");
@@ -71,7 +76,7 @@ namespace GeoPharma.Migrations
 
                     b.HasIndex("RegiaoId");
 
-                    b.ToTable("Estabelecimentos", (string)null);
+                    b.ToTable("Clientes", (string)null);
                 });
 
             modelBuilder.Entity("GeoPharma.Models.Lead", b =>
@@ -79,6 +84,8 @@ namespace GeoPharma.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Cnpj")
                         .HasColumnType("longtext");
@@ -119,6 +126,8 @@ namespace GeoPharma.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
+
                     b.Property<string>("Descricao")
                         .HasMaxLength(250)
                         .HasColumnType("varchar(250)");
@@ -138,6 +147,8 @@ namespace GeoPharma.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CriadoEm")
                         .HasColumnType("datetime(6)");
@@ -165,7 +176,7 @@ namespace GeoPharma.Migrations
                     b.ToTable("Usuarios", (string)null);
                 });
 
-            modelBuilder.Entity("GeoPharma.Models.Estabelecimento", b =>
+            modelBuilder.Entity("GeoPharma.Models.Cliente", b =>
                 {
                     b.HasOne("GeoPharma.Models.Regiao", null)
                         .WithMany("Estabelecimentos")

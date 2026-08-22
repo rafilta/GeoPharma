@@ -14,5 +14,5 @@ public class Regiao
     public string? Descricao { get; set; }
 
     // Relacionamento 1 para Muitos (Uma região possui vários estabelecimentos)
-    public ICollection<Estabelecimento> Estabelecimentos { get; set; } = new List<Estabelecimento>();
+    public ICollection<Cliente> Estabelecimentos { get; set; } = new List<Cliente>();
 }

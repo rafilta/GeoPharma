@@ -28,7 +28,7 @@ public class IndexModel : PageModel
 
     public async Task OnGetAsync()
     {
-        var estabelecimentos = await _context.Estabelecimentos
+        var estabelecimentos = await _context.Clientes
             .AsNoTracking()
             .Where(e =>
                 e.Ativo &&
@@ -183,7 +183,7 @@ public class IndexModel : PageModel
         }
 
         var estabelecimento =
-            await _context.Estabelecimentos
+            await _context.Clientes
                 .FirstOrDefaultAsync(e =>
                     e.Id == model.EstabelecimentoId &&
                     e.Ativo);
@@ -397,7 +397,7 @@ public class IndexModel : PageModel
      */
 
     private Lead? EncontrarLeadCorrespondente(
-        Estabelecimento estabelecimento,
+        Cliente estabelecimento,
         IEnumerable<Lead> leads)
     {
         /*
@@ -461,7 +461,7 @@ public class IndexModel : PageModel
     }
 
     private static string ObterNomeEstabelecimento(
-        Estabelecimento estabelecimento)
+        Cliente estabelecimento)
     {
         if (!string.IsNullOrWhiteSpace(
                 estabelecimento.NomeFantasia))
@@ -479,7 +479,7 @@ public class IndexModel : PageModel
     }
 
     private static string MontarEndereco(
-        Estabelecimento estabelecimento)
+        Cliente estabelecimento)
     {
         var partes = new List<string>();
 
