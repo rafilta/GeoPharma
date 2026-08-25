@@ -1,17 +1,17 @@
-using Microsoft.AspNetCore.Identity;
+Ôªøusing Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using GeoPharma.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ConfiguraÁ„o da String de Conex„o com o MySQL
+// Configura√ß√£o da String de Conex√£o com o MySQL
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
-// ConfiguraÁ„o do Identity para autenticaÁ„o compatÌvel com o EF Core
+// Configura√ß√£o do Identity para autentica√ß√£o compat√≠vel com o EF Core
 builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;
@@ -43,12 +43,15 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 
-// Bloco para criar o usu·rio admin padr„o automaticamente no MySQL ao iniciar
+// Bloco para criar o usu√°rio admin padr√£o automaticamente no MySQL ao iniciar
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try
     {
+        var dbContext = services.GetRequiredService<AppDbContext>();
+        await dbContext.Database.MigrateAsync();
+
         var userManager = services.GetRequiredService<UserManager<IdentityUser>>();
         var email = "admin@admin.com";
 
@@ -68,7 +71,7 @@ using (var scope = app.Services.CreateScope())
     catch (Exception ex)
     {
         var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "Ocorreu um erro ao criar o usu·rio administrador padr„o.");
+        logger.LogError(ex, "Ocorreu um erro ao criar o usu√°rio administrador padr√£o.");
     }
 }
 
