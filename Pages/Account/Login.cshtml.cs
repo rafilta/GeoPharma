@@ -1,12 +1,17 @@
 using GeoPharma.Data;
 using GeoPharma.Models;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Security.Claims;
 
 namespace GeoPharma.Pages.Account;
 
+[EnableRateLimiting("login")]
 public class LoginModel : PageModel
 {
     private readonly AppDbContext _context;
@@ -19,6 +24,9 @@ public class LoginModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
+
     public string? MensagemErro { get; set; }
 
     public class InputModel
@@ -27,8 +35,12 @@ public class LoginModel : PageModel
         public string Senha { get; set; } = string.Empty;
     }
 
-    public void OnGet()
+    public IActionResult OnGet()
     {
+        if (User.Identity?.IsAuthenticated == true)
+            return LocalRedirect(Url.IsLocalUrl(ReturnUrl) ? ReturnUrl! : "/");
+
+        return Page();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -47,7 +59,7 @@ public class LoginModel : PageModel
 
         if (usuario == null)
         {
-            MensagemErro = "E-mail ou senha inválidos.";
+            MensagemErro = "E-mail ou senha invÃ¡lidos.";
             return Page();
         }
 
@@ -64,7 +76,7 @@ public class LoginModel : PageModel
         }
         catch
         {
-            // Compatibilidade com usuários antigos
+            // Compatibilidade com usuÃ¡rios antigos
             // cuja senha ainda esteja armazenada sem hash.
         }
 
@@ -72,7 +84,7 @@ public class LoginModel : PageModel
             resultado == PasswordVerificationResult.Success ||
             resultado == PasswordVerificationResult.SuccessRehashNeeded;
 
-        // Compatibilidade temporária com usuários antigos
+        // Compatibilidade temporÃ¡ria com usuÃ¡rios antigos
         if (!senhaValida && usuario.SenhaHash == Input.Senha)
         {
             usuario.SenhaHash =
@@ -85,10 +97,32 @@ public class LoginModel : PageModel
 
         if (!senhaValida)
         {
-            MensagemErro = "E-mail ou senha inválidos.";
+            MensagemErro = "E-mail ou senha invÃ¡lidos.";
             return Page();
         }
 
-        return RedirectToPage("/Index");
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
+            new(ClaimTypes.Name, usuario.Nome),
+            new(ClaimTypes.GivenName, usuario.Nome.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? usuario.Nome),
+            new(ClaimTypes.Email, usuario.Email),
+            new(ClaimTypes.Role, usuario.Tipo.ToString())
+        };
+
+        var principal = new ClaimsPrincipal(
+            new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal,
+            new AuthenticationProperties
+            {
+                IsPersistent = false,
+                AllowRefresh = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8)
+            });
+
+        return LocalRedirect(Url.IsLocalUrl(ReturnUrl) ? ReturnUrl! : "/");
     }
 }

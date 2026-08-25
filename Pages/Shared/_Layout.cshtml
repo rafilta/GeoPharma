@@ -110,11 +110,13 @@
                     <!-- Informações do Usuário & Sair -->
                     <div class="d-flex align-items-center gap-3 pt-2 pt-lg-0 border-top border-lg-0">
                         <span class="user-info">
-                            Olá, <strong>Admin</strong>
+                            Olá, <strong>@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? User.Identity?.Name ?? "Usuário")</strong>
                         </span>
-                        <a class="btn btn-outline-dark btn-sm py-1 px-2" style="font-size: 0.8rem;" asp-page="/Account/Login">
-                            Sair
-                        </a>
+                        <form method="post" asp-page="/Account/Logout" class="m-0">
+                            <button type="submit" class="btn btn-outline-dark btn-sm py-1 px-2" style="font-size: 0.8rem;">
+                                Sair
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>

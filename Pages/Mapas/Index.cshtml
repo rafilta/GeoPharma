@@ -193,6 +193,16 @@
         box-shadow: 0 2px 6px rgba(0,0,0,.35);
     }
 
+    .geo-marker-touch {
+        width: 44px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        touch-action: manipulation;
+    }
+
     .geo-marker-inner {
         width: 8px;
         height: 8px;
@@ -269,18 +279,44 @@
 
     @@media(max-width: 767px) {
 
+        html,
+        body {
+            overscroll-behavior: none;
+        }
+
+        .geo-page {
+            height: calc(100dvh - 52px);
+        }
+
         .geo-header {
-            padding: 7px;
+            padding: 6px 8px;
+        }
+
+        .geo-title {
+            font-size: .95rem;
         }
 
         .geo-kpis {
             display: flex;
             overflow-x: auto;
             gap: 5px;
+            margin-top: 6px;
+            padding-bottom: 2px;
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .geo-kpis::-webkit-scrollbar {
+            display: none;
         }
 
         .geo-kpi {
-            min-width: 95px;
+            min-width: 88px;
+            padding: 5px 8px;
+        }
+
+        .geo-kpi-number {
+            font-size: .9rem;
         }
 
         .geo-toolbar {
@@ -288,28 +324,81 @@
         }
 
         .geo-toolbar-grid {
-            grid-template-columns: 1fr 80px;
+            grid-template-columns: 86px minmax(118px, 1fr) 84px;
+            gap: 6px;
         }
 
         .address-field {
             grid-column: 1 / -1;
         }
 
-        .location-field {
+        .radius-field {
             grid-column: 1;
         }
 
-        .apply-field {
+        .location-field {
             grid-column: 2;
         }
 
+        .apply-field {
+            grid-column: 3;
+        }
+
+        .location-field .btn,
+        .apply-field .btn {
+            padding-left: 6px;
+            padding-right: 6px;
+            font-size: .75rem;
+            white-space: nowrap;
+        }
+
+        .address-results {
+            max-height: min(42dvh, 300px);
+        }
+
+        .address-item {
+            min-height: 46px;
+            display: flex;
+            align-items: center;
+            font-size: .8rem;
+        }
+
+        .location-validation {
+            align-items: stretch;
+            flex-direction: column;
+            gap: 7px;
+            padding: 8px;
+        }
+
+        .location-validation .btn {
+            width: 100%;
+        }
+
         .leaflet-popup-content {
-            width: 255px !important;
+            width: min(255px, calc(100vw - 76px)) !important;
+            margin: 12px 16px;
+        }
+
+        .leaflet-popup-content-wrapper {
+            max-height: 58dvh;
+            overflow-y: auto;
         }
 
         .geo-legend {
             right: 6px;
             bottom: 6px;
+            padding: 5px 8px;
+        }
+
+        .legend-row {
+            font-size: .6rem;
+            margin: 3px 0;
+        }
+
+        .map-loading-card {
+            max-width: calc(100vw - 32px);
+            padding: 12px 15px;
+            font-size: .82rem;
         }
     }
 </style>
@@ -417,7 +506,7 @@
 
             </div>
 
-            <div class="geo-field">
+            <div class="geo-field radius-field">
 
                 <label>
                     Raio
@@ -598,7 +687,7 @@
 
         return L.divIcon({
 
-            className: "",
+            className: "geo-marker-touch",
 
             html:
                 `<div class="geo-marker"
@@ -606,8 +695,9 @@
                     <div class="geo-marker-inner"></div>
                  </div>`,
 
-            iconSize: [26,26],
-            iconAnchor: [13,26]
+            iconSize: [44,44],
+            iconAnchor: [22,38],
+            popupAnchor: [0,-34]
         });
     }
 
@@ -753,7 +843,10 @@
                         {
                             icon:
                                 criarIcone("#dc3545"),
-                            zIndexOffset: 1000
+                            zIndexOffset: 5000,
+                            riseOnHover: true,
+                            keyboard: true,
+                            bubblingMouseEvents: false
                         });
 
                 marker.bindPopup(`
