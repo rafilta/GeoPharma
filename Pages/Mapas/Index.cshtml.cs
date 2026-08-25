@@ -88,7 +88,7 @@ namespace GeoPharma.Pages.Mapas
                             : l.Status,
                         Responsavel =
                             l.VendedorResponsavel ??
-                            "N„o informado",
+                            "N√£o informado",
                         DataCaptura =
                             l.DataCriacao.ToString(
                                 "dd/MM/yyyy HH:mm")
@@ -112,7 +112,7 @@ namespace GeoPharma.Pages.Mapas
         }
 
         // =========================================================
-        // ENDERE«OS POSSÕVEIS
+        // ENDERE√áOS POSS√çVEIS
         // =========================================================
 
         public async Task<IActionResult>
@@ -123,7 +123,7 @@ namespace GeoPharma.Pages.Mapas
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "Digite um endereÁo."
+                    message = "Digite um endere√ßo."
                 });
             }
 
@@ -157,7 +157,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "N„o foi possÌvel consultar endereÁos."
+                        "N√£o foi poss√≠vel consultar endere√ßos."
                 });
             }
 
@@ -254,7 +254,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "N„o foi possÌvel identificar sua localizaÁ„o."
+                        "N√£o foi poss√≠vel identificar sua localiza√ß√£o."
                 });
             }
 
@@ -266,7 +266,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "MunicÌpio n„o identificado."
+                        "Munic√≠pio n√£o identificado."
                 });
             }
 
@@ -283,7 +283,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "Cidade ou UF n„o identificadas."
+                        "Cidade ou UF n√£o identificadas."
                 });
             }
 
@@ -305,7 +305,7 @@ namespace GeoPharma.Pages.Mapas
         }
 
         // =========================================================
-        // POSSÕVEIS LEADS
+        // POSS√çVEIS LEADS
         // =========================================================
 
         public async Task<IActionResult>
@@ -338,8 +338,8 @@ namespace GeoPharma.Pages.Mapas
                     success = false,
 
                     message =
-                        $"MunicÌpio {cidade}/{uf} " +
-                        "n„o encontrado no IBGE."
+                        $"Munic√≠pio {cidade}/{uf} " +
+                        "n√£o encontrado no IBGE."
                 });
             }
 
@@ -356,8 +356,8 @@ namespace GeoPharma.Pages.Mapas
                     data = Array.Empty<object>(),
                     total = 0,
                     message =
-                        "Nenhuma empresa farmacÍutica " +
-                        "retornada pela base p˙blica."
+                        "Nenhuma empresa farmac√™utica " +
+                        "retornada pela base p√∫blica."
                 });
             }
 
@@ -430,9 +430,51 @@ namespace GeoPharma.Pages.Mapas
                     }
                 }
 
-                if (melhor == null ||
-                    melhorScore < 85)
+                if (melhor == null || melhorScore < 85)
                 {
+                    // Muitos pontos do OpenStreetMap n√£o possuem CNPJ, telefone
+                    // ou endere√ßo completo. Eles continuam sendo farm√°cias reais
+                    // dentro do raio e devem aparecer para o usu√°rio, mas sem
+                    // permitir captura at√© o CNPJ ser identificado.
+                    var jaCadastrado = clientes.Any(c =>
+                            c.Latitude.HasValue && c.Longitude.HasValue &&
+                            CalcularDistanciaKm(
+                                ponto.Latitude, ponto.Longitude,
+                                c.Latitude.Value, c.Longitude.Value) <= 0.12)
+                        || leads.Any(l =>
+                            CalcularDistanciaKm(
+                                ponto.Latitude, ponto.Longitude,
+                                l.Latitude, l.Longitude) <= 0.12);
+
+                    if (jaCadastrado)
+                    {
+                        continue;
+                    }
+
+                    var enderecoOsm = string.Join(", ", new[]
+                    {
+                        string.Join(" ", new[] { ponto.Rua, ponto.Numero }
+                            .Where(v => !string.IsNullOrWhiteSpace(v))),
+                        ponto.Bairro,
+                        ponto.Cep
+                    }.Where(v => !string.IsNullOrWhiteSpace(v)));
+
+                    resultado.Add(new PossivelLeadMapaVm
+                    {
+                        Cnpj = "",
+                        RazaoSocial = "CNPJ ainda n√£o identificado",
+                        NomeFantasia = string.IsNullOrWhiteSpace(ponto.Nome)
+                            ? "Farm√°cia localizada"
+                            : ponto.Nome,
+                        Endereco = string.IsNullOrWhiteSpace(enderecoOsm)
+                            ? "Endere√ßo dispon√≠vel ao abrir no mapa"
+                            : enderecoOsm,
+                        Latitude = ponto.Latitude,
+                        Longitude = ponto.Longitude,
+                        Confianca = 70,
+                        CadastroCompleto = false
+                    });
+
                     continue;
                 }
 
@@ -476,7 +518,9 @@ namespace GeoPharma.Pages.Mapas
                             ponto.Longitude,
 
                         Confianca =
-                            melhorScore
+                            melhorScore,
+
+                        CadastroCompleto = true
                     });
             }
 
@@ -491,7 +535,7 @@ namespace GeoPharma.Pages.Mapas
                     resultado,
 
                 message =
-                    $"{resultado.Count} possÌveis leads " +
+                    $"{resultado.Count} poss√≠veis leads " +
                     "identificados no raio."
             });
         }
@@ -510,7 +554,7 @@ namespace GeoPharma.Pages.Mapas
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "CNPJ inv·lido."
+                    message = "CNPJ inv√°lido."
                 });
             }
 
@@ -530,7 +574,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "Esta empresa j· È cliente."
+                        "Esta empresa j√° √© cliente."
                 });
             }
 
@@ -547,7 +591,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "Este CNPJ j· foi capturado."
+                        "Este CNPJ j√° foi capturado."
                 });
             }
 
@@ -643,7 +687,7 @@ namespace GeoPharma.Pages.Mapas
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "Status inv·lido."
+                    message = "Status inv√°lido."
                 });
             }
 
@@ -658,7 +702,7 @@ namespace GeoPharma.Pages.Mapas
                 {
                     success = false,
                     message =
-                        "Lead n„o encontrado."
+                        "Lead n√£o encontrado."
                 });
             }
 
@@ -888,6 +932,11 @@ namespace GeoPharma.Pages.Mapas
                     node[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
                     way[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
                     relation[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
+                    node[""healthcare""=""pharmacy""](around:{raio},{lat},{lon});
+                    way[""healthcare""=""pharmacy""](around:{raio},{lat},{lon});
+                    relation[""healthcare""=""pharmacy""](around:{raio},{lat},{lon});
+                    node[""shop""=""chemist""](around:{raio},{lat},{lon});
+                    way[""shop""=""chemist""](around:{raio},{lat},{lon});
                 );
 
                 out center tags;
@@ -1060,7 +1109,7 @@ namespace GeoPharma.Pages.Mapas
         }
 
         // =========================================================
-        // CORRESPOND NCIA
+        // CORRESPOND√äNCIA
         // =========================================================
 
         private static int CalcularScore(
@@ -1130,6 +1179,11 @@ namespace GeoPharma.Pages.Mapas
                 !string.IsNullOrWhiteSpace(
                     ponto.Cep);
 
+            var bairro =
+                SimilaridadeTokens(
+                    ponto.Bairro,
+                    empresa.Bairro);
+
             if (numeroIgual &&
                 rua >= 0.70)
             {
@@ -1142,6 +1196,29 @@ namespace GeoPharma.Pages.Mapas
                 return 95;
             }
 
+            if (cepIgual && rua >= 0.55)
+            {
+                return 94;
+            }
+
+            if (cepIgual && nome >= 0.30)
+            {
+                return 91;
+            }
+
+            if (bairro >= 0.85 &&
+                rua >= 0.72 &&
+                nome >= 0.35)
+            {
+                return 89;
+            }
+
+            if (bairro >= 0.85 &&
+                nome >= 0.78)
+            {
+                return 86;
+            }
+
             if (nome >= 0.85 &&
                 rua >= 0.55)
             {
@@ -1149,6 +1226,19 @@ namespace GeoPharma.Pages.Mapas
             }
 
             return 0;
+        }
+
+        private static double CalcularDistanciaKm(
+            double lat1, double lon1, double lat2, double lon2)
+        {
+            const double raioTerraKm = 6371.0088;
+            var dLat = (lat2 - lat1) * Math.PI / 180d;
+            var dLon = (lon2 - lon1) * Math.PI / 180d;
+            var a = Math.Sin(dLat / 2) * Math.Sin(dLat / 2) +
+                    Math.Cos(lat1 * Math.PI / 180d) *
+                    Math.Cos(lat2 * Math.PI / 180d) *
+                    Math.Sin(dLon / 2) * Math.Sin(dLon / 2);
+            return raioTerraKm * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
         }
 
         // =========================================================
@@ -1692,5 +1782,6 @@ namespace GeoPharma.Pages.Mapas
         public double Latitude { get; set; }
         public double Longitude { get; set; }
         public int Confianca { get; set; }
+        public bool CadastroCompleto { get; set; }
     }
 }

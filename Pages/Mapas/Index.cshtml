@@ -873,7 +873,9 @@
                             CNPJ
                         </span>
                         <span class="popup-value fw-bold">
-                            ${escapeHtml(p.cnpj)}
+                            ${p.cadastroCompleto
+                                ? escapeHtml(p.cnpj)
+                                : "Ainda não identificado"}
                         </span>
                     </div>
 
@@ -891,7 +893,9 @@
                             Confiança
                         </span>
                         <span class="popup-value">
-                            ${p.confianca}%
+                            ${p.cadastroCompleto
+                                ? `${p.confianca}%`
+                                : "Ponto confirmado no mapa"}
                         </span>
                     </div>
 
@@ -905,13 +909,17 @@
 
                         </a>
 
-                        <button type="button"
-                                class="btn btn-danger btn-sm"
-                                onclick="capturarLead(${index})">
-
-                            Capturar Lead
-
-                        </button>
+                        ${p.cadastroCompleto ? `
+                            <button type="button"
+                                    class="btn btn-danger btn-sm"
+                                    onclick="capturarLead(${index})">
+                                Capturar Lead
+                            </button>
+                        ` : `
+                            <div class="small text-muted text-center">
+                                O CNPJ precisa ser confirmado antes da captura.
+                            </div>
+                        `}
 
                     </div>
                 `);
