@@ -5,142 +5,95 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
 
 namespace GeoPharma.Pages.Mapas
 {
     public class IndexModel : PageModel
     {
         private readonly AppDbContext _context;
-        private readonly IConfiguration _configuration;
 
-        public IndexModel(
-            AppDbContext context,
-            IConfiguration configuration)
+        private static readonly HttpClient Http = CriarHttpClient();
+
+        private static readonly SemaphoreSlim NominatimLock =
+            new(1, 1);
+
+        private static DateTime UltimaChamadaNominatim =
+            DateTime.MinValue;
+
+        public IndexModel(AppDbContext context)
         {
             _context = context;
-            _configuration = configuration;
         }
 
-        public string GoogleMapsApiKey { get; set; } = "";
+        public IList<ClienteMapaVm> ClientesMapa { get; set; }
+            = new List<ClienteMapaVm>();
 
-        public IList<ClienteMapaViewModel> ClientesMapa { get; set; }
-            = new List<ClienteMapaViewModel>();
-
-        public IList<LeadMapaViewModel> LeadsMapa { get; set; }
-            = new List<LeadMapaViewModel>();
+        public IList<LeadMapaVm> LeadsMapa { get; set; }
+            = new List<LeadMapaVm>();
 
         public int TotalClientes { get; set; }
         public int TotalLeads { get; set; }
         public int TotalEmAndamento { get; set; }
         public int TotalNegociando { get; set; }
 
-        // ============================================================
-        // CARREGAMENTO DO MAPA
-        // ============================================================
-
         public async Task OnGetAsync()
         {
-            GoogleMapsApiKey =
-                _configuration["GoogleMaps:ApiKey"] ?? "";
+            var clientes =
+                await _context.Clientes
+                    .AsNoTracking()
+                    .Where(c =>
+                        c.Latitude.HasValue &&
+                        c.Longitude.HasValue)
+                    .ToListAsync();
 
-            // --------------------------------------------------------
-            // CLIENTES
-            // --------------------------------------------------------
+            ClientesMapa =
+                clientes.Select(c =>
+                    new ClienteMapaVm
+                    {
+                        Id = c.Id,
+                        Nome = ObterNomeCliente(c),
+                        RazaoSocial = c.RazaoSocial ?? "",
+                        Cnpj = c.Cnpj ?? "",
+                        Endereco = MontarEndereco(
+                            c.Logradouro,
+                            c.Numero,
+                            c.Bairro,
+                            c.Cidade,
+                            c.Uf,
+                            c.Cep),
+                        Latitude = c.Latitude!.Value,
+                        Longitude = c.Longitude!.Value
+                    })
+                    .ToList();
 
-            var clientes = await _context.Clientes
-                .AsNoTracking()
-                .Where(c =>
-                    c.Latitude.HasValue &&
-                    c.Longitude.HasValue)
-                .OrderBy(c => c.NomeFantasia)
-                .ToListAsync();
+            var leads =
+                await _context.Leads
+                    .AsNoTracking()
+                    .OrderByDescending(l => l.DataCriacao)
+                    .ToListAsync();
 
-            ClientesMapa = clientes
-                .Select(c => new ClienteMapaViewModel
-                {
-                    Id = c.Id,
-
-                    Nome = ObterNomeCliente(c),
-
-                    RazaoSocial =
-                        string.IsNullOrWhiteSpace(c.RazaoSocial)
-                            ? "Não informada"
-                            : c.RazaoSocial,
-
-                    Cnpj =
-                        string.IsNullOrWhiteSpace(c.Cnpj)
-                            ? "Não informado"
-                            : c.Cnpj,
-
-                    Endereco =
-                        MontarEnderecoCliente(c),
-
-                    Regiao =
-                        c.Regiao ?? "",
-
-                    Latitude =
-                        c.Latitude!.Value,
-
-                    Longitude =
-                        c.Longitude!.Value,
-
-                    Ativo =
-                        c.Ativo
-                })
-                .ToList();
-
-            // --------------------------------------------------------
-            // LEADS
-            // --------------------------------------------------------
-
-            var leads = await _context.Leads
-                .AsNoTracking()
-                .OrderByDescending(l => l.DataCriacao)
-                .ToListAsync();
-
-            LeadsMapa = leads
-                .Select(l => new LeadMapaViewModel
-                {
-                    Id = l.Id,
-
-                    Nome = l.Nome,
-
-                    Cnpj =
-                        string.IsNullOrWhiteSpace(l.Cnpj)
-                            ? "Não informado"
-                            : l.Cnpj,
-
-                    Endereco =
-                        string.IsNullOrWhiteSpace(l.Endereco)
-                            ? "Endereço não informado"
-                            : l.Endereco,
-
-                    Latitude =
-                        l.Latitude,
-
-                    Longitude =
-                        l.Longitude,
-
-                    Status =
-                        string.IsNullOrWhiteSpace(l.Status)
+            LeadsMapa =
+                leads.Select(l =>
+                    new LeadMapaVm
+                    {
+                        Id = l.Id,
+                        Nome = l.Nome,
+                        Cnpj = l.Cnpj ?? "",
+                        Endereco = l.Endereco ?? "",
+                        Latitude = l.Latitude,
+                        Longitude = l.Longitude,
+                        Status = string.IsNullOrWhiteSpace(l.Status)
                             ? "Em Andamento"
                             : l.Status,
-
-                    Responsavel =
-                        string.IsNullOrWhiteSpace(l.VendedorResponsavel)
-                            ? "Não informado"
-                            : l.VendedorResponsavel,
-
-                    DataCaptura =
-                        l.DataCriacao.ToString(
-                            "dd/MM/yyyy HH:mm"
-                        )
-                })
-                .ToList();
-
-            // --------------------------------------------------------
-            // KPIs
-            // --------------------------------------------------------
+                        Responsavel =
+                            l.VendedorResponsavel ??
+                            "Não informado",
+                        DataCaptura =
+                            l.DataCriacao.ToString(
+                                "dd/MM/yyyy HH:mm")
+                    })
+                    .ToList();
 
             TotalClientes =
                 await _context.Clientes.CountAsync();
@@ -158,212 +111,479 @@ namespace GeoPharma.Pages.Mapas
                     l.Status == "Negociando");
         }
 
-        // ============================================================
-        // CAPTURAR LEAD
-        // ============================================================
+        // =========================================================
+        // ENDEREÇOS POSSÍVEIS
+        // =========================================================
 
-        public async Task<IActionResult> OnPostCapturarLeadAsync(
-            [FromBody] CapturarLeadMapaInput model)
+        public async Task<IActionResult>
+            OnGetBuscarEnderecosAsync(string termo)
         {
-            if (model == null)
+            if (string.IsNullOrWhiteSpace(termo))
             {
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "Dados inválidos."
+                    message = "Digite um endereço."
                 });
             }
 
-            if (string.IsNullOrWhiteSpace(model.Nome))
+            var consulta =
+                termo.Trim();
+
+            if (!consulta.Contains(
+                "Brasil",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                consulta += ", Brasil";
+            }
+
+            var url =
+                "https://nominatim.openstreetmap.org/search" +
+                "?format=jsonv2" +
+                "&addressdetails=1" +
+                "&countrycodes=br" +
+                "&limit=8" +
+                "&q=" +
+                Uri.EscapeDataString(consulta);
+
+            var doc =
+                await ConsultarNominatimAsync(url);
+
+            if (doc == null ||
+                doc.RootElement.ValueKind !=
+                JsonValueKind.Array)
             {
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "O estabelecimento não possui nome válido."
+                    message =
+                        "Não foi possível consultar endereços."
                 });
             }
 
-            if (model.Latitude == 0 ||
-                model.Longitude == 0)
+            var resultados =
+                new List<EnderecoPesquisaVm>();
+
+            foreach (var item
+                in doc.RootElement.EnumerateArray())
+            {
+                var lat =
+                    ParseDouble(
+                        JsonString(item, "lat"));
+
+                var lon =
+                    ParseDouble(
+                        JsonString(item, "lon"));
+
+                if (!lat.HasValue ||
+                    !lon.HasValue)
+                {
+                    continue;
+                }
+
+                var cidade = "";
+                var uf = "";
+
+                if (item.TryGetProperty(
+                    "address",
+                    out var address))
+                {
+                    cidade =
+                        ExtrairCidade(address);
+
+                    uf =
+                        ExtrairUf(address);
+                }
+
+                resultados.Add(
+                    new EnderecoPesquisaVm
+                    {
+                        Endereco =
+                            JsonString(
+                                item,
+                                "display_name"),
+
+                        Latitude =
+                            lat.Value,
+
+                        Longitude =
+                            lon.Value,
+
+                        Cidade =
+                            cidade,
+
+                        Uf =
+                            uf
+                    });
+            }
+
+            return new JsonResult(new
+            {
+                success = true,
+                data = resultados
+            });
+        }
+
+        // =========================================================
+        // CONTEXTO DO GPS
+        // =========================================================
+
+        public async Task<IActionResult>
+            OnGetContextoAsync(
+                double latitude,
+                double longitude)
+        {
+            var url =
+                "https://nominatim.openstreetmap.org/reverse" +
+                "?format=jsonv2" +
+                "&addressdetails=1" +
+                "&zoom=18" +
+                "&lat=" +
+                latitude.ToString(
+                    CultureInfo.InvariantCulture) +
+                "&lon=" +
+                longitude.ToString(
+                    CultureInfo.InvariantCulture);
+
+            var doc =
+                await ConsultarNominatimAsync(url);
+
+            if (doc == null)
             {
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "O estabelecimento não possui localização válida."
+                    message =
+                        "Não foi possível identificar sua localização."
                 });
             }
 
-            // --------------------------------------------------------
-            // BLOQUEIA CLIENTE EXISTENTE
-            // --------------------------------------------------------
+            if (!doc.RootElement.TryGetProperty(
+                "address",
+                out var address))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message =
+                        "Município não identificado."
+                });
+            }
+
+            var cidade =
+                ExtrairCidade(address);
+
+            var uf =
+                ExtrairUf(address);
+
+            if (string.IsNullOrWhiteSpace(cidade) ||
+                string.IsNullOrWhiteSpace(uf))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message =
+                        "Cidade ou UF não identificadas."
+                });
+            }
+
+            return new JsonResult(new
+            {
+                success = true,
+
+                data = new
+                {
+                    cidade,
+                    uf,
+
+                    endereco =
+                        JsonString(
+                            doc.RootElement,
+                            "display_name")
+                }
+            });
+        }
+
+        // =========================================================
+        // POSSÍVEIS LEADS
+        // =========================================================
+
+        public async Task<IActionResult>
+            OnGetPossiveisAsync(
+                double latitude,
+                double longitude,
+                double raioKm,
+                string cidade,
+                string uf)
+        {
+            if (raioKm < 1)
+            {
+                raioKm = 1;
+            }
+
+            if (raioKm > 15)
+            {
+                raioKm = 15;
+            }
+
+            var codigoMunicipio =
+                await ObterCodigoMunicipioIbgeAsync(
+                    uf,
+                    cidade);
+
+            if (!codigoMunicipio.HasValue)
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+
+                    message =
+                        $"Município {cidade}/{uf} " +
+                        "não encontrado no IBGE."
+                });
+            }
+
+            var empresas =
+                await BuscarFarmaciasMinhaReceitaAsync(
+                    codigoMunicipio.Value,
+                    uf);
+
+            if (empresas.Count == 0)
+            {
+                return new JsonResult(new
+                {
+                    success = true,
+                    data = Array.Empty<object>(),
+                    total = 0,
+                    message =
+                        "Nenhuma empresa farmacêutica " +
+                        "retornada pela base pública."
+                });
+            }
 
             var clientes =
                 await _context.Clientes
                     .AsNoTracking()
-                    .Where(c =>
-                        c.Latitude.HasValue &&
-                        c.Longitude.HasValue)
+                    .Where(c => c.Cnpj != null)
                     .ToListAsync();
-
-            foreach (var cliente in clientes)
-            {
-                if (!string.IsNullOrWhiteSpace(model.Cnpj) &&
-                    !string.IsNullOrWhiteSpace(cliente.Cnpj))
-                {
-                    var cnpjNovo =
-                        SomenteNumeros(model.Cnpj);
-
-                    var cnpjCliente =
-                        SomenteNumeros(cliente.Cnpj);
-
-                    if (cnpjNovo.Length == 14 &&
-                        cnpjNovo == cnpjCliente)
-                    {
-                        return new JsonResult(new
-                        {
-                            success = false,
-
-                            message =
-                                $"Este CNPJ já pertence ao cliente " +
-                                $"{ObterNomeCliente(cliente)}."
-                        });
-                    }
-                }
-
-                var distancia =
-                    CalcularDistanciaMetros(
-                        model.Latitude,
-                        model.Longitude,
-                        cliente.Latitude!.Value,
-                        cliente.Longitude!.Value
-                    );
-
-                if (distancia <= 50)
-                {
-                    return new JsonResult(new
-                    {
-                        success = false,
-
-                        message =
-                            $"Existe um cliente cadastrado neste local: " +
-                            $"{ObterNomeCliente(cliente)}."
-                    });
-                }
-            }
-
-            // --------------------------------------------------------
-            // BLOQUEIA LEAD EXISTENTE
-            // --------------------------------------------------------
 
             var leads =
                 await _context.Leads
                     .AsNoTracking()
+                    .Where(l => l.Cnpj != null)
                     .ToListAsync();
 
-            var nomeNormalizado =
-                NormalizarTexto(model.Nome);
+            var cnpjsClientes =
+                clientes
+                    .Select(c =>
+                        NormalizarCnpj(c.Cnpj))
+                    .ToHashSet();
 
-            foreach (var leadExistente in leads)
+            var cnpjsLeads =
+                leads
+                    .Select(l =>
+                        NormalizarCnpj(l.Cnpj))
+                    .ToHashSet();
+
+            var pontosOsm =
+                await BuscarFarmaciasOsmAsync(
+                    latitude,
+                    longitude,
+                    raioKm);
+
+            var resultado =
+                new List<PossivelLeadMapaVm>();
+
+            var usados =
+                new HashSet<string>();
+
+            foreach (var ponto in pontosOsm)
             {
-                if (!string.IsNullOrWhiteSpace(model.Cnpj) &&
-                    !string.IsNullOrWhiteSpace(leadExistente.Cnpj))
+                EmpresaPublica? melhor =
+                    null;
+
+                var melhorScore =
+                    0;
+
+                foreach (var empresa in empresas)
                 {
-                    var cnpjNovo =
-                        SomenteNumeros(model.Cnpj);
+                    var cnpj =
+                        NormalizarCnpj(
+                            empresa.Cnpj);
 
-                    var cnpjLead =
-                        SomenteNumeros(leadExistente.Cnpj);
-
-                    if (cnpjNovo.Length == 14 &&
-                        cnpjNovo == cnpjLead)
+                    if (cnpjsClientes.Contains(cnpj) ||
+                        cnpjsLeads.Contains(cnpj) ||
+                        usados.Contains(cnpj))
                     {
-                        return new JsonResult(new
-                        {
-                            success = false,
+                        continue;
+                    }
 
-                            message =
-                                $"Este CNPJ já foi capturado por " +
-                                $"{leadExistente.VendedorResponsavel ?? "outro representante"}."
-                        });
+                    var score =
+                        CalcularScore(
+                            ponto,
+                            empresa);
+
+                    if (score > melhorScore)
+                    {
+                        melhorScore = score;
+                        melhor = empresa;
                     }
                 }
 
-                var distancia =
-                    CalcularDistanciaMetros(
-                        model.Latitude,
-                        model.Longitude,
-                        leadExistente.Latitude,
-                        leadExistente.Longitude
-                    );
-
-                if (distancia <= 50)
+                if (melhor == null ||
+                    melhorScore < 85)
                 {
-                    return new JsonResult(new
-                    {
-                        success = false,
-
-                        message =
-                            $"Este ponto já foi capturado por " +
-                            $"{leadExistente.VendedorResponsavel ?? "outro representante"}."
-                    });
+                    continue;
                 }
 
-                var mesmoNome =
-                    NormalizarTexto(
-                        leadExistente.Nome
-                    ) == nomeNormalizado;
+                var cnpjMelhor =
+                    NormalizarCnpj(
+                        melhor.Cnpj);
 
-                if (mesmoNome &&
-                    distancia <= 200)
-                {
-                    return new JsonResult(new
+                usados.Add(cnpjMelhor);
+
+                resultado.Add(
+                    new PossivelLeadMapaVm
                     {
-                        success = false,
+                        Cnpj =
+                            FormatarCnpj(
+                                melhor.Cnpj),
 
-                        message =
-                            $"Já existe um lead para " +
-                            $"{leadExististenteNome(leadExistente)}."
+                        RazaoSocial =
+                            melhor.RazaoSocial,
+
+                        NomeFantasia =
+                            string.IsNullOrWhiteSpace(
+                                melhor.NomeFantasia)
+                                ? melhor.RazaoSocial
+                                : melhor.NomeFantasia,
+
+                        Endereco =
+                            MontarEndereco(
+                                JuntarTipoLogradouro(
+                                    melhor.TipoLogradouro,
+                                    melhor.Logradouro),
+                                melhor.Numero,
+                                melhor.Bairro,
+                                melhor.Cidade,
+                                melhor.Uf,
+                                melhor.Cep),
+
+                        Latitude =
+                            ponto.Latitude,
+
+                        Longitude =
+                            ponto.Longitude,
+
+                        Confianca =
+                            melhorScore
                     });
-                }
             }
 
-            // --------------------------------------------------------
-            // CRIAÇÃO
-            // --------------------------------------------------------
+            return new JsonResult(new
+            {
+                success = true,
+
+                total =
+                    resultado.Count,
+
+                data =
+                    resultado,
+
+                message =
+                    $"{resultado.Count} possíveis leads " +
+                    "identificados no raio."
+            });
+        }
+
+        // =========================================================
+        // CAPTURA
+        // =========================================================
+
+        public async Task<IActionResult>
+            OnPostCapturarLeadAsync(
+                [FromBody] CapturarLeadInput input)
+        {
+            if (input == null ||
+                string.IsNullOrWhiteSpace(input.Cnpj))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message = "CNPJ inválido."
+                });
+            }
+
+            var cnpj =
+                NormalizarCnpj(input.Cnpj);
+
+            var clientes =
+                await _context.Clientes
+                    .AsNoTracking()
+                    .Where(c => c.Cnpj != null)
+                    .ToListAsync();
+
+            if (clientes.Any(c =>
+                NormalizarCnpj(c.Cnpj) == cnpj))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message =
+                        "Esta empresa já é cliente."
+                });
+            }
+
+            var leads =
+                await _context.Leads
+                    .AsNoTracking()
+                    .Where(l => l.Cnpj != null)
+                    .ToListAsync();
+
+            if (leads.Any(l =>
+                NormalizarCnpj(l.Cnpj) == cnpj))
+            {
+                return new JsonResult(new
+                {
+                    success = false,
+                    message =
+                        "Este CNPJ já foi capturado."
+                });
+            }
 
             var responsavel =
                 ObterUsuarioAtual();
 
-            var lead = new Lead
-            {
-                Nome =
-                    model.Nome.Trim(),
+            var lead =
+                new Lead
+                {
+                    Nome =
+                        string.IsNullOrWhiteSpace(
+                            input.NomeFantasia)
+                            ? input.RazaoSocial
+                            : input.NomeFantasia,
 
-                Cnpj =
-                    string.IsNullOrWhiteSpace(model.Cnpj)
-                        ? null
-                        : model.Cnpj.Trim(),
+                    Cnpj =
+                        input.Cnpj,
 
-                Endereco =
-                    string.IsNullOrWhiteSpace(model.Endereco)
-                        ? "Endereço não informado"
-                        : model.Endereco.Trim(),
+                    Endereco =
+                        input.Endereco,
 
-                Latitude =
-                    model.Latitude,
+                    Latitude =
+                        input.Latitude,
 
-                Longitude =
-                    model.Longitude,
+                    Longitude =
+                        input.Longitude,
 
-                Status =
-                    "Em Andamento",
+                    Status =
+                        "Em Andamento",
 
-                VendedorResponsavel =
-                    responsavel,
+                    VendedorResponsavel =
+                        responsavel,
 
-                DataCriacao =
-                    DateTime.Now
-            };
+                    DataCriacao =
+                        DateTime.Now
+                };
 
             _context.Leads.Add(lead);
 
@@ -378,75 +598,47 @@ namespace GeoPharma.Pages.Mapas
 
                 lead = new
                 {
-                    id =
-                        lead.Id,
-
-                    nome =
-                        lead.Nome,
-
-                    cnpj =
-                        string.IsNullOrWhiteSpace(lead.Cnpj)
-                            ? "Não informado"
-                            : lead.Cnpj,
-
-                    endereco =
-                        lead.Endereco,
-
-                    latitude =
-                        lead.Latitude,
-
-                    longitude =
-                        lead.Longitude,
-
-                    status =
-                        lead.Status,
-
+                    id = lead.Id,
+                    nome = lead.Nome,
+                    cnpj = lead.Cnpj,
+                    endereco = lead.Endereco,
+                    latitude = lead.Latitude,
+                    longitude = lead.Longitude,
+                    status = lead.Status,
                     responsavel =
                         lead.VendedorResponsavel,
-
                     dataCaptura =
                         lead.DataCriacao.ToString(
-                            "dd/MM/yyyy HH:mm"
-                        )
+                            "dd/MM/yyyy HH:mm")
                 }
             });
         }
 
-        // ============================================================
+        // =========================================================
         // STATUS
-        // ============================================================
+        // =========================================================
 
-        public async Task<IActionResult> OnPostAtualizarStatusAsync(
-            [FromBody] AtualizarStatusMapaInput model)
+        public async Task<IActionResult>
+            OnPostAtualizarStatusAsync(
+                [FromBody] AtualizarStatusInput input)
         {
-            var permitidos = new[]
-            {
-                "Em Andamento",
-                "Negociando",
-                "Convertido",
-                "Perdido"
-            };
-
-            if (model == null ||
-                model.LeadId <= 0)
-            {
-                return new JsonResult(new
+            var permitidos =
+                new[]
                 {
-                    success = false,
-                    message = "Lead inválido."
-                });
-            }
+                    "Em Andamento",
+                    "Negociando",
+                    "Convertido",
+                    "Perdido"
+                };
 
-            var novoStatus =
+            var status =
                 permitidos.FirstOrDefault(s =>
                     string.Equals(
                         s,
-                        model.Status,
-                        StringComparison.OrdinalIgnoreCase
-                    )
-                );
+                        input.Status,
+                        StringComparison.OrdinalIgnoreCase));
 
-            if (novoStatus == null)
+            if (status == null)
             {
                 return new JsonResult(new
                 {
@@ -458,302 +650,1047 @@ namespace GeoPharma.Pages.Mapas
             var lead =
                 await _context.Leads
                     .FirstOrDefaultAsync(l =>
-                        l.Id == model.LeadId
-                    );
+                        l.Id == input.LeadId);
 
             if (lead == null)
             {
                 return new JsonResult(new
                 {
                     success = false,
-                    message = "Lead não encontrado."
+                    message =
+                        "Lead não encontrado."
                 });
             }
 
-            lead.Status =
-                novoStatus;
+            lead.Status = status;
 
             await _context.SaveChangesAsync();
 
             return new JsonResult(new
             {
                 success = true,
-                status = novoStatus,
+                status,
                 message = "Status atualizado."
             });
         }
 
-        // ============================================================
+        // =========================================================
+        // MINHA RECEITA
+        // =========================================================
+
+        private async Task<List<EmpresaPublica>>
+            BuscarFarmaciasMinhaReceitaAsync(
+                int municipioIbge,
+                string uf)
+        {
+            var resultado =
+                new Dictionary<string, EmpresaPublica>();
+
+            var cnaes =
+                new[]
+                {
+                    "4771701",
+                    "4771702",
+                    "4771703"
+                };
+
+            foreach (var cnae in cnaes)
+            {
+                string? cursor = null;
+                var pagina = 0;
+
+                do
+                {
+                    pagina++;
+
+                    if (pagina > 5)
+                    {
+                        break;
+                    }
+
+                    var url =
+                        "https://minhareceita.org/" +
+                        "?uf=" +
+                        Uri.EscapeDataString(uf) +
+                        "&municipio=" +
+                        municipioIbge +
+                        "&cnae=" +
+                        cnae +
+                        "&limit=1000";
+
+                    if (!string.IsNullOrWhiteSpace(
+                        cursor))
+                    {
+                        url +=
+                            "&cursor=" +
+                            Uri.EscapeDataString(cursor);
+                    }
+
+                    using var response =
+                        await Http.GetAsync(url);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        break;
+                    }
+
+                    using var doc =
+                        JsonDocument.Parse(
+                            await response.Content
+                                .ReadAsStringAsync());
+
+                    if (!doc.RootElement
+                        .TryGetProperty(
+                            "data",
+                            out var data))
+                    {
+                        break;
+                    }
+
+                    foreach (var item
+                        in data.EnumerateArray())
+                    {
+                        var empresa =
+                            ConverterEmpresa(item);
+
+                        if (empresa == null)
+                        {
+                            continue;
+                        }
+
+                        var cnpj =
+                            NormalizarCnpj(
+                                empresa.Cnpj);
+
+                        if (string.IsNullOrWhiteSpace(
+                            cnpj))
+                        {
+                            continue;
+                        }
+
+                        resultado[cnpj] =
+                            empresa;
+                    }
+
+                    cursor = null;
+
+                    if (doc.RootElement
+                        .TryGetProperty(
+                            "cursor",
+                            out var cursorJson) &&
+                        cursorJson.ValueKind ==
+                        JsonValueKind.String)
+                    {
+                        cursor =
+                            cursorJson.GetString();
+                    }
+                }
+                while (!string.IsNullOrWhiteSpace(
+                    cursor));
+            }
+
+            return resultado.Values.ToList();
+        }
+
+        private static EmpresaPublica?
+            ConverterEmpresa(
+                JsonElement item)
+        {
+            var cnpj =
+                JsonString(item, "cnpj");
+
+            if (string.IsNullOrWhiteSpace(cnpj))
+            {
+                return null;
+            }
+
+            return new EmpresaPublica
+            {
+                Cnpj = cnpj,
+
+                RazaoSocial =
+                    JsonString(
+                        item,
+                        "razao_social"),
+
+                NomeFantasia =
+                    JsonString(
+                        item,
+                        "nome_fantasia"),
+
+                TipoLogradouro =
+                    JsonString(
+                        item,
+                        "descricao_tipo_de_logradouro"),
+
+                Logradouro =
+                    JsonString(
+                        item,
+                        "logradouro"),
+
+                Numero =
+                    JsonString(
+                        item,
+                        "numero"),
+
+                Bairro =
+                    JsonString(
+                        item,
+                        "bairro"),
+
+                Cidade =
+                    JsonString(
+                        item,
+                        "municipio"),
+
+                Uf =
+                    JsonString(
+                        item,
+                        "uf"),
+
+                Cep =
+                    JsonString(
+                        item,
+                        "cep"),
+
+                Telefone =
+                    JsonString(
+                        item,
+                        "ddd_telefone_1")
+            };
+        }
+
+        // =========================================================
+        // OSM
+        // =========================================================
+
+        private async Task<List<PontoOsm>>
+            BuscarFarmaciasOsmAsync(
+                double latitude,
+                double longitude,
+                double raioKm)
+        {
+            var raio =
+                Math.Round(raioKm * 1000);
+
+            var lat =
+                latitude.ToString(
+                    CultureInfo.InvariantCulture);
+
+            var lon =
+                longitude.ToString(
+                    CultureInfo.InvariantCulture);
+
+            var query = $@"
+                [out:json][timeout:30];
+
+                (
+                    node[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
+                    way[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
+                    relation[""amenity""=""pharmacy""](around:{raio},{lat},{lon});
+                );
+
+                out center tags;
+            ";
+
+            var endpoints =
+                new[]
+                {
+                    "https://overpass-api.de/api/interpreter",
+                    "https://overpass.kumi.systems/api/interpreter"
+                };
+
+            foreach (var endpoint in endpoints)
+            {
+                try
+                {
+                    using var content =
+                        new StringContent(
+                            "data=" +
+                            Uri.EscapeDataString(query),
+                            Encoding.UTF8,
+                            "application/x-www-form-urlencoded");
+
+                    using var response =
+                        await Http.PostAsync(
+                            endpoint,
+                            content);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        continue;
+                    }
+
+                    using var doc =
+                        JsonDocument.Parse(
+                            await response.Content
+                                .ReadAsStringAsync());
+
+                    var resultado =
+                        new List<PontoOsm>();
+
+                    foreach (var item
+                        in doc.RootElement
+                            .GetProperty("elements")
+                            .EnumerateArray())
+                    {
+                        var ponto =
+                            ConverterPontoOsm(item);
+
+                        if (ponto != null)
+                        {
+                            resultado.Add(ponto);
+                        }
+                    }
+
+                    return resultado;
+                }
+                catch
+                {
+                }
+            }
+
+            return new List<PontoOsm>();
+        }
+
+        private static PontoOsm?
+            ConverterPontoOsm(
+                JsonElement item)
+        {
+            double? lat = null;
+            double? lon = null;
+
+            if (item.TryGetProperty(
+                "lat",
+                out var latJson) &&
+                latJson.TryGetDouble(out var l1))
+            {
+                lat = l1;
+            }
+
+            if (item.TryGetProperty(
+                "lon",
+                out var lonJson) &&
+                lonJson.TryGetDouble(out var l2))
+            {
+                lon = l2;
+            }
+
+            if ((!lat.HasValue ||
+                 !lon.HasValue) &&
+                item.TryGetProperty(
+                    "center",
+                    out var center))
+            {
+                if (center.TryGetProperty(
+                    "lat",
+                    out var clat) &&
+                    clat.TryGetDouble(out var l3))
+                {
+                    lat = l3;
+                }
+
+                if (center.TryGetProperty(
+                    "lon",
+                    out var clon) &&
+                    clon.TryGetDouble(out var l4))
+                {
+                    lon = l4;
+                }
+            }
+
+            if (!lat.HasValue ||
+                !lon.HasValue)
+            {
+                return null;
+            }
+
+            JsonElement tags = default;
+
+            item.TryGetProperty(
+                "tags",
+                out tags);
+
+            return new PontoOsm
+            {
+                Latitude = lat.Value,
+                Longitude = lon.Value,
+
+                Nome =
+                    PrimeiroValor(
+                        tags,
+                        "name",
+                        "brand",
+                        "operator"),
+
+                Rua =
+                    JsonString(
+                        tags,
+                        "addr:street"),
+
+                Numero =
+                    JsonString(
+                        tags,
+                        "addr:housenumber"),
+
+                Bairro =
+                    PrimeiroValor(
+                        tags,
+                        "addr:suburb",
+                        "addr:neighbourhood"),
+
+                Cep =
+                    JsonString(
+                        tags,
+                        "addr:postcode"),
+
+                Cnpj =
+                    PrimeiroValor(
+                        tags,
+                        "cnpj",
+                        "contact:cnpj",
+                        "ref:cnpj"),
+
+                Telefone =
+                    PrimeiroValor(
+                        tags,
+                        "phone",
+                        "contact:phone")
+            };
+        }
+
+        // =========================================================
+        // CORRESPONDÊNCIA
+        // =========================================================
+
+        private static int CalcularScore(
+            PontoOsm ponto,
+            EmpresaPublica empresa)
+        {
+            var cnpjPonto =
+                NormalizarCnpj(
+                    ponto.Cnpj);
+
+            var cnpjEmpresa =
+                NormalizarCnpj(
+                    empresa.Cnpj);
+
+            if (!string.IsNullOrWhiteSpace(
+                    cnpjPonto) &&
+                cnpjPonto == cnpjEmpresa)
+            {
+                return 100;
+            }
+
+            var telefonePonto =
+                SomenteNumeros(
+                    ponto.Telefone);
+
+            var telefoneEmpresa =
+                SomenteNumeros(
+                    empresa.Telefone);
+
+            if (telefonePonto.Length >= 8 &&
+                telefoneEmpresa.Length >= 8 &&
+                telefonePonto.EndsWith(
+                    telefoneEmpresa))
+            {
+                return 99;
+            }
+
+            var nomeEmpresa =
+                string.IsNullOrWhiteSpace(
+                    empresa.NomeFantasia)
+                    ? empresa.RazaoSocial
+                    : empresa.NomeFantasia;
+
+            var nome =
+                SimilaridadeTokens(
+                    ponto.Nome,
+                    nomeEmpresa);
+
+            var rua =
+                SimilaridadeTokens(
+                    ponto.Rua,
+                    empresa.Logradouro);
+
+            var numeroIgual =
+                !string.IsNullOrWhiteSpace(
+                    ponto.Numero) &&
+                !string.IsNullOrWhiteSpace(
+                    empresa.Numero) &&
+                NormalizarNumero(
+                    ponto.Numero) ==
+                NormalizarNumero(
+                    empresa.Numero);
+
+            var cepIgual =
+                SomenteNumeros(ponto.Cep) ==
+                SomenteNumeros(empresa.Cep) &&
+                !string.IsNullOrWhiteSpace(
+                    ponto.Cep);
+
+            if (numeroIgual &&
+                rua >= 0.70)
+            {
+                return 98;
+            }
+
+            if (cepIgual &&
+                nome >= 0.60)
+            {
+                return 95;
+            }
+
+            if (nome >= 0.85 &&
+                rua >= 0.55)
+            {
+                return 90;
+            }
+
+            return 0;
+        }
+
+        // =========================================================
+        // IBGE
+        // =========================================================
+
+        private async Task<int?>
+            ObterCodigoMunicipioIbgeAsync(
+                string uf,
+                string cidade)
+        {
+            try
+            {
+                using var response =
+                    await Http.GetAsync(
+                        "https://servicodados.ibge.gov.br/" +
+                        "api/v1/localidades/estados/" +
+                        Uri.EscapeDataString(uf) +
+                        "/municipios");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                using var doc =
+                    JsonDocument.Parse(
+                        await response.Content
+                            .ReadAsStringAsync());
+
+                var procurar =
+                    Normalizar(cidade);
+
+                foreach (var item
+                    in doc.RootElement
+                        .EnumerateArray())
+                {
+                    if (Normalizar(
+                        JsonString(item, "nome")) !=
+                        procurar)
+                    {
+                        continue;
+                    }
+
+                    if (item.GetProperty("id")
+                        .TryGetInt32(
+                            out var codigo))
+                    {
+                        return codigo;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
+        }
+
+        // =========================================================
+        // NOMINATIM
+        // =========================================================
+
+        private static async Task<JsonDocument?>
+            ConsultarNominatimAsync(
+                string url)
+        {
+            await NominatimLock.WaitAsync();
+
+            try
+            {
+                var decorrido =
+                    DateTime.UtcNow -
+                    UltimaChamadaNominatim;
+
+                if (decorrido <
+                    TimeSpan.FromSeconds(1))
+                {
+                    await Task.Delay(
+                        TimeSpan.FromSeconds(1) -
+                        decorrido);
+                }
+
+                using var request =
+                    new HttpRequestMessage(
+                        HttpMethod.Get,
+                        url);
+
+                request.Headers.TryAddWithoutValidation(
+                    "User-Agent",
+                    "GeoPharma/1.0");
+
+                using var response =
+                    await Http.SendAsync(request);
+
+                UltimaChamadaNominatim =
+                    DateTime.UtcNow;
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    return null;
+                }
+
+                return JsonDocument.Parse(
+                    await response.Content
+                        .ReadAsStringAsync());
+            }
+            finally
+            {
+                NominatimLock.Release();
+            }
+        }
+
+        // =========================================================
         // AUXILIARES
-        // ============================================================
+        // =========================================================
 
         private string ObterUsuarioAtual()
         {
             var nome =
                 User.Identity?.Name;
 
-            if (string.IsNullOrWhiteSpace(nome))
-            {
-                return "Admin";
-            }
-
-            if (nome.Contains("@"))
-            {
-                nome =
-                    nome.Split('@')[0];
-            }
-
-            return nome;
-        }
-
-        private static string leadExististenteNome(
-            Lead lead)
-        {
-            return string.IsNullOrWhiteSpace(lead.Nome)
-                ? "lead existente"
-                : lead.Nome;
+            return string.IsNullOrWhiteSpace(nome)
+                ? "Admin"
+                : nome;
         }
 
         private static string ObterNomeCliente(
-            Cliente cliente)
+            Cliente c)
         {
             if (!string.IsNullOrWhiteSpace(
-                cliente.NomeFantasia))
+                c.NomeFantasia))
             {
-                return cliente.NomeFantasia;
+                return c.NomeFantasia;
             }
 
-            if (!string.IsNullOrWhiteSpace(
-                cliente.RazaoSocial))
-            {
-                return cliente.RazaoSocial;
-            }
-
-            return $"Cliente #{cliente.Id}";
+            return c.RazaoSocial ??
+                   $"Cliente #{c.Id}";
         }
 
-        private static string MontarEnderecoCliente(
-            Cliente cliente)
+        private static string MontarEndereco(
+            string? logradouro,
+            string? numero,
+            string? bairro,
+            string? cidade,
+            string? uf,
+            string? cep)
         {
             var partes =
                 new List<string>();
 
+            var linha =
+                (logradouro ?? "").Trim();
+
             if (!string.IsNullOrWhiteSpace(
-                cliente.Logradouro))
+                numero))
             {
-                var linha =
-                    cliente.Logradouro;
+                linha +=
+                    $", {numero}";
+            }
 
-                if (!string.IsNullOrWhiteSpace(
-                    cliente.Numero))
-                {
-                    linha +=
-                        $", {cliente.Numero}";
-                }
-
+            if (!string.IsNullOrWhiteSpace(
+                linha))
+            {
                 partes.Add(linha);
             }
 
             if (!string.IsNullOrWhiteSpace(
-                cliente.Bairro))
+                bairro))
             {
-                partes.Add(
-                    cliente.Bairro
-                );
+                partes.Add(bairro);
             }
 
             if (!string.IsNullOrWhiteSpace(
-                cliente.Cidade))
+                cidade))
             {
-                var cidade =
-                    cliente.Cidade;
+                partes.Add(
+                    string.IsNullOrWhiteSpace(uf)
+                        ? cidade
+                        : $"{cidade} - {uf}");
+            }
+
+            if (!string.IsNullOrWhiteSpace(
+                cep))
+            {
+                partes.Add(
+                    $"CEP {cep}");
+            }
+
+            return string.Join(
+                " | ",
+                partes);
+        }
+
+        private static string JuntarTipoLogradouro(
+            string tipo,
+            string logradouro)
+        {
+            return $"{tipo} {logradouro}"
+                .Trim();
+        }
+
+        private static string ExtrairCidade(
+            JsonElement address)
+        {
+            return PrimeiroValor(
+                address,
+                "city",
+                "town",
+                "municipality",
+                "village");
+        }
+
+        private static string ExtrairUf(
+            JsonElement address)
+        {
+            var iso =
+                PrimeiroValor(
+                    address,
+                    "ISO3166-2-lvl4");
+
+            if (!string.IsNullOrWhiteSpace(
+                iso) &&
+                iso.Contains("-"))
+            {
+                return iso.Split('-')[^1];
+            }
+
+            return EstadoParaUf(
+                JsonString(
+                    address,
+                    "state"));
+        }
+
+        private static string EstadoParaUf(
+            string estado)
+        {
+            var mapa =
+                new Dictionary<string, string>
+                {
+                    ["RIO DE JANEIRO"] = "RJ",
+                    ["SAO PAULO"] = "SP",
+                    ["MINAS GERAIS"] = "MG",
+                    ["ESPIRITO SANTO"] = "ES",
+                    ["PARANA"] = "PR",
+                    ["SANTA CATARINA"] = "SC",
+                    ["RIO GRANDE DO SUL"] = "RS",
+                    ["BAHIA"] = "BA",
+                    ["PERNAMBUCO"] = "PE",
+                    ["CEARA"] = "CE",
+                    ["GOIAS"] = "GO",
+                    ["DISTRITO FEDERAL"] = "DF"
+                };
+
+            var n =
+                Normalizar(estado);
+
+            return mapa.TryGetValue(
+                n,
+                out var uf)
+                ? uf
+                : "";
+        }
+
+        private static string JsonString(
+            JsonElement element,
+            string nome)
+        {
+            if (element.ValueKind !=
+                JsonValueKind.Object)
+            {
+                return "";
+            }
+
+            if (!element.TryGetProperty(
+                nome,
+                out var value))
+            {
+                return "";
+            }
+
+            return value.ValueKind ==
+                JsonValueKind.Null
+                ? ""
+                : value.ToString();
+        }
+
+        private static string PrimeiroValor(
+            JsonElement element,
+            params string[] campos)
+        {
+            foreach (var campo in campos)
+            {
+                var valor =
+                    JsonString(
+                        element,
+                        campo);
 
                 if (!string.IsNullOrWhiteSpace(
-                    cliente.Uf))
+                    valor))
                 {
-                    cidade +=
-                        $" - {cliente.Uf}";
+                    return valor;
                 }
-
-                partes.Add(cidade);
             }
 
-            if (!string.IsNullOrWhiteSpace(
-                cliente.Cep))
+            return "";
+        }
+
+        private static double? ParseDouble(
+            string valor)
+        {
+            if (double.TryParse(
+                valor,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var numero))
             {
-                partes.Add(
-                    $"CEP {cliente.Cep}"
-                );
+                return numero;
             }
 
-            return partes.Count == 0
-                ? "Endereço não informado"
-                : string.Join(" | ", partes);
+            return null;
+        }
+
+        private static string NormalizarCnpj(
+            string? cnpj)
+        {
+            return new string(
+                (cnpj ?? "")
+                    .Where(char.IsLetterOrDigit)
+                    .ToArray());
+        }
+
+        private static string FormatarCnpj(
+            string? cnpj)
+        {
+            var n =
+                NormalizarCnpj(cnpj);
+
+            if (n.Length == 14 &&
+                n.All(char.IsDigit))
+            {
+                return
+                    $"{n[..2]}." +
+                    $"{n.Substring(2, 3)}." +
+                    $"{n.Substring(5, 3)}/" +
+                    $"{n.Substring(8, 4)}-" +
+                    $"{n.Substring(12, 2)}";
+            }
+
+            return n;
         }
 
         private static string SomenteNumeros(
             string? valor)
         {
-            if (string.IsNullOrWhiteSpace(valor))
-            {
-                return "";
-            }
-
             return new string(
-                valor
+                (valor ?? "")
                     .Where(char.IsDigit)
-                    .ToArray()
-            );
+                    .ToArray());
         }
 
-        private static string NormalizarTexto(
+        private static string NormalizarNumero(
+            string? numero)
+        {
+            return new string(
+                (numero ?? "")
+                    .Where(char.IsLetterOrDigit)
+                    .ToArray());
+        }
+
+        private static string Normalizar(
             string? texto)
         {
-            if (string.IsNullOrWhiteSpace(texto))
+            if (string.IsNullOrWhiteSpace(
+                texto))
             {
                 return "";
             }
 
-            texto =
+            var value =
                 texto
-                    .Trim()
                     .ToUpperInvariant()
                     .Normalize(
-                        NormalizationForm.FormD
-                    );
+                        NormalizationForm.FormD);
 
-            var chars =
-                texto.Where(c =>
+            return new string(
+                value.Where(c =>
                     CharUnicodeInfo
                         .GetUnicodeCategory(c) !=
-                    UnicodeCategory.NonSpacingMark
-                );
-
-            return new string(chars.ToArray())
-                .Normalize(
-                    NormalizationForm.FormC
-                );
+                    UnicodeCategory.NonSpacingMark)
+                    .ToArray());
         }
 
-        private static double CalcularDistanciaMetros(
-            double lat1,
-            double lon1,
-            double lat2,
-            double lon2)
+        private static double SimilaridadeTokens(
+            string? a,
+            string? b)
         {
-            const double raioTerra =
-                6371000;
+            var ta =
+                Tokenizar(a);
 
-            var latitude1 =
-                GrausParaRadianos(lat1);
+            var tb =
+                Tokenizar(b);
 
-            var latitude2 =
-                GrausParaRadianos(lat2);
+            if (ta.Count == 0 ||
+                tb.Count == 0)
+            {
+                return 0;
+            }
 
-            var deltaLatitude =
-                GrausParaRadianos(
-                    lat2 - lat1
-                );
+            var intersecao =
+                ta.Intersect(tb).Count();
 
-            var deltaLongitude =
-                GrausParaRadianos(
-                    lon2 - lon1
-                );
+            var uniao =
+                ta.Union(tb).Count();
 
-            var a =
-                Math.Sin(deltaLatitude / 2) *
-                Math.Sin(deltaLatitude / 2) +
-
-                Math.Cos(latitude1) *
-                Math.Cos(latitude2) *
-
-                Math.Sin(deltaLongitude / 2) *
-                Math.Sin(deltaLongitude / 2);
-
-            var c =
-                2 *
-                Math.Atan2(
-                    Math.Sqrt(a),
-                    Math.Sqrt(1 - a)
-                );
-
-            return raioTerra * c;
+            return uniao == 0
+                ? 0
+                : (double)intersecao / uniao;
         }
 
-        private static double GrausParaRadianos(
-            double graus)
+        private static HashSet<string> Tokenizar(
+            string? texto)
         {
-            return graus *
-                   Math.PI /
-                   180;
+            return Normalizar(texto)
+                .Split(
+                    new[]
+                    {
+                        ' ',
+                        '-',
+                        '.',
+                        ',',
+                        '/'
+                    },
+                    StringSplitOptions
+                        .RemoveEmptyEntries)
+                .Where(x => x.Length > 1)
+                .ToHashSet();
+        }
+
+        private static HttpClient CriarHttpClient()
+        {
+            var client =
+                new HttpClient
+                {
+                    Timeout =
+                        TimeSpan.FromSeconds(45)
+                };
+
+            client.DefaultRequestHeaders
+                .TryAddWithoutValidation(
+                    "User-Agent",
+                    "GeoPharma/1.0");
+
+            return client;
         }
     }
 
-    // ================================================================
-    // VIEW MODELS
-    // ================================================================
-
-    public class ClienteMapaViewModel
+    public class ClienteMapaVm
     {
         public int Id { get; set; }
-
         public string Nome { get; set; } = "";
-
         public string RazaoSocial { get; set; } = "";
-
         public string Cnpj { get; set; } = "";
-
         public string Endereco { get; set; } = "";
-
-        public string Regiao { get; set; } = "";
-
         public double Latitude { get; set; }
-
         public double Longitude { get; set; }
-
-        public bool Ativo { get; set; }
     }
 
-    public class LeadMapaViewModel
+    public class LeadMapaVm
     {
         public int Id { get; set; }
-
         public string Nome { get; set; } = "";
-
         public string Cnpj { get; set; } = "";
-
         public string Endereco { get; set; } = "";
-
         public double Latitude { get; set; }
-
         public double Longitude { get; set; }
-
         public string Status { get; set; } = "";
-
         public string Responsavel { get; set; } = "";
-
         public string DataCaptura { get; set; } = "";
     }
 
-    public class CapturarLeadMapaInput
+    public class EnderecoPesquisaVm
     {
-        public string Nome { get; set; } = "";
-
-        public string? RazaoSocial { get; set; }
-
-        public string? Cnpj { get; set; }
-
         public string Endereco { get; set; } = "";
-
         public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string Cidade { get; set; } = "";
+        public string Uf { get; set; } = "";
+    }
 
+    public class CapturarLeadInput
+    {
+        public string Cnpj { get; set; } = "";
+        public string RazaoSocial { get; set; } = "";
+        public string NomeFantasia { get; set; } = "";
+        public string Endereco { get; set; } = "";
+        public double Latitude { get; set; }
         public double Longitude { get; set; }
     }
 
-    public class AtualizarStatusMapaInput
+    public class AtualizarStatusInput
     {
         public int LeadId { get; set; }
-
         public string Status { get; set; } = "";
+    }
+
+    internal class EmpresaPublica
+    {
+        public string Cnpj { get; set; } = "";
+        public string RazaoSocial { get; set; } = "";
+        public string NomeFantasia { get; set; } = "";
+        public string TipoLogradouro { get; set; } = "";
+        public string Logradouro { get; set; } = "";
+        public string Numero { get; set; } = "";
+        public string Bairro { get; set; } = "";
+        public string Cidade { get; set; } = "";
+        public string Uf { get; set; } = "";
+        public string Cep { get; set; } = "";
+        public string Telefone { get; set; } = "";
+    }
+
+    internal class PontoOsm
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public string Nome { get; set; } = "";
+        public string Rua { get; set; } = "";
+        public string Numero { get; set; } = "";
+        public string Bairro { get; set; } = "";
+        public string Cep { get; set; } = "";
+        public string Cnpj { get; set; } = "";
+        public string Telefone { get; set; } = "";
+    }
+
+    public class PossivelLeadMapaVm
+    {
+        public string Cnpj { get; set; } = "";
+        public string RazaoSocial { get; set; } = "";
+        public string NomeFantasia { get; set; } = "";
+        public string Endereco { get; set; } = "";
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public int Confianca { get; set; }
     }
 }
