@@ -1,8 +1,6 @@
-/vendor/
-/node_modules/
-.env
-.env.*
-!.env.example
-*.log
-/.idea/
-/.vscode/
+/config/database.local.php
+/.vscode/*.log
+/storage/logs/*.log
+/storage/cache/*
+!/storage/cache/.gitkeep
+

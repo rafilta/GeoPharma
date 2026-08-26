@@ -1,0 +1,6 @@
+.brand-symbol { color: #31c48d; font-size: 1.35rem; margin-right: .45rem; }
+.brand-text { letter-spacing: -.02rem; }
+.map-placeholder { min-height: 430px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bs-tertiary-bg); border: 1px dashed var(--bs-border-color); border-radius: .5rem; color: var(--bs-secondary-color); }
+.map-placeholder i { font-size: 3rem; color: #31c48d; }
+.app-footer { font-size: .875rem; }
+

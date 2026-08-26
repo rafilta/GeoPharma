@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "▶ Iniciar GeoPharma",
+      "type": "shell",
+      "command": "C:\\xampp\\php\\php.exe",
+      "args": ["-S", "localhost:8090", "-t", "${workspaceFolder}"],
+      "isBackground": true,
+      "problemMatcher": { "owner": "php", "pattern": { "regexp": ".*" }, "background": { "activeOnStart": true, "beginsPattern": ".*Development Server.*started.*", "endsPattern": ".*Development Server.*started.*" } },
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    }
+  ]
+}
+
