@@ -3,6 +3,8 @@
 .map-placeholder { min-height: 430px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bs-tertiary-bg); border: 1px dashed var(--bs-border-color); border-radius: .5rem; color: var(--bs-secondary-color); }
 .map-placeholder i { font-size: 3rem; color: #31c48d; }
 .app-footer { font-size: .875rem; }
+button[aria-busy="true"] { cursor: wait !important; opacity: .88; }
+button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 
 /* Login */
 .login-page-geopharma { margin: 0; min-height: 100vh; min-height: 100dvh; background: #f3f7f6; color: #102a38; }
@@ -40,6 +42,7 @@
 .login-password-toggle { position: absolute; top: 50%; right: .75rem; width: 40px; height: 40px; transform: translateY(-50%); border: 0; border-radius: .6rem; background: transparent; color: #71858b; }
 .login-password-toggle:hover { background: #edf6f4; color: #0d947a; }
 .login-submit { display: flex; align-items: center; justify-content: space-between; min-height: 56px; margin-top: .4rem; padding: .85rem 1.2rem  .85rem 1.4rem; border: 0; border-radius: .9rem; background: linear-gradient(120deg, #087f6a, #11a98b); color: #fff; font-weight: 800; box-shadow: 0 14px 28px rgba(10,130,108,.22); transition: transform .2s, box-shadow .2s; }
+.login-submit[aria-busy="true"] { justify-content: center; gap: .7rem; }
 .login-submit:hover { transform: translateY(-2px); box-shadow: 0 18px 32px rgba(10,130,108,.3); }
 .login-submit i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.15); }
 .login-support { margin: 1.4rem 0 0; text-align: center; color: #809196; font-size: .8rem; }

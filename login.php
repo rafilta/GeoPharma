@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </button>
                     </div>
                 </div>
-                <button type="submit" class="login-submit">
+                <button type="submit" class="login-submit" data-loading-label="Entrando...">
                     <span>Entrar no GeoPharma</span>
                     <i class="bi bi-arrow-right"></i>
                 </button>
@@ -123,5 +123,6 @@ document.querySelector('[data-password-toggle]')?.addEventListener('click', func
     this.querySelector('i').className = showing ? 'bi bi-eye' : 'bi bi-eye-slash';
 });
 </script>
+<script src="/assets/js/geopharma.js"></script>
 </body>
 </html>

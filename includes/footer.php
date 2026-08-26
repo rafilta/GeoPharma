@@ -5,6 +5,6 @@
 </div>
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/assets/js/adminlte.min.js"></script>
+<script src="/assets/js/geopharma.js"></script>
 </body>
 </html>
-
