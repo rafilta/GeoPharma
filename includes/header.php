@@ -12,9 +12,9 @@ $usuarioAtual = Auth::user();
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($pageTitle) ?> | GeoPharma</title>
-    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/assets/css/adminlte.min.css">
-    <link rel="stylesheet" href="/assets/css/geopharma.css">
+    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= GEOPHARMA_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/adminlte.min.css?v=<?= GEOPHARMA_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/geopharma.css?v=<?= GEOPHARMA_VERSION ?>">
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
 <div class="app-wrapper">

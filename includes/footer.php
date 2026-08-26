@@ -3,8 +3,8 @@
         <span class="float-end d-none d-sm-inline">Versão <?= htmlspecialchars(GEOPHARMA_VERSION) ?></span>
     </footer>
 </div>
-<script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
-<script src="/assets/js/adminlte.min.js"></script>
-<script src="/assets/js/geopharma.js"></script>
+<script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js?v=<?= GEOPHARMA_VERSION ?>"></script>
+<script src="/assets/js/adminlte.min.js?v=<?= GEOPHARMA_VERSION ?>"></script>
+<script src="/assets/js/geopharma.js?v=<?= GEOPHARMA_VERSION ?>"></script>
 </body>
 </html>

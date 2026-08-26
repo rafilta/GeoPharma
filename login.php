@@ -43,15 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071b2c">
     <title>Entrar | GeoPharma</title>
-    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/assets/css/adminlte.min.css">
-    <link rel="stylesheet" href="/assets/css/geopharma.css">
+    <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= GEOPHARMA_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/adminlte.min.css?v=<?= GEOPHARMA_VERSION ?>">
+    <link rel="stylesheet" href="/assets/css/geopharma.css?v=<?= GEOPHARMA_VERSION ?>">
 </head>
 <body class="login-page-geopharma">
 <main class="login-shell">
     <section class="login-brand-panel" aria-label="Apresentação do GeoPharma">
         <div class="login-brand-content">
-            <img src="/assets/img/geopharma-logo.png" alt="Logo GeoPharma" class="login-hero-logo">
+            <img src="/assets/img/geopharma-logo.png?v=<?= GEOPHARMA_VERSION ?>" alt="Logo GeoPharma" class="login-hero-logo">
             <span class="login-eyebrow">Inteligência geográfica</span>
             <h1>Encontre oportunidades.<br><span>Conquiste territórios.</span></h1>
             <p>Dados, mapas e relacionamento comercial em uma experiência simples e inteligente.</p>
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="login-form-panel">
         <div class="login-card">
             <div class="login-mobile-brand">
-                <img src="/assets/img/geopharma-logo.png" alt="" aria-hidden="true">
+                <img src="/assets/img/geopharma-logo.png?v=<?= GEOPHARMA_VERSION ?>" alt="" aria-hidden="true">
                 <strong>Geo<span>Pharma</span></strong>
             </div>
             <div class="login-heading">
@@ -123,6 +123,6 @@ document.querySelector('[data-password-toggle]')?.addEventListener('click', func
     this.querySelector('i').className = showing ? 'bi bi-eye' : 'bi bi-eye-slash';
 });
 </script>
-<script src="/assets/js/geopharma.js"></script>
+<script src="/assets/js/geopharma.js?v=<?= GEOPHARMA_VERSION ?>"></script>
 </body>
 </html>
