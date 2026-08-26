@@ -10,21 +10,16 @@ button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 .empty-state > i { display: block; margin-bottom: .75rem; color: #31c48d; font-size: 3rem; }
 .empty-state h4 { color: var(--bs-body-color); }
 
+.users-table-wrapper { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+.users-table { min-width: 850px; }
+.users-table th, .users-table td { white-space: nowrap; }
+.users-table td:first-child { min-width: 290px; }
+.users-table .users-actions .btn { min-height: 38px; }
+
 @media (max-width: 767.98px) {
-    .users-table-wrapper { overflow: visible; }
-    .users-table, .users-table tbody, .users-table tr, .users-table td { display: block; width: 100%; }
-    .users-table thead { display: none; }
-    .users-table tbody { padding: .45rem .85rem; }
-    .users-table tbody tr { margin: .55rem 0; padding: 1rem; border: 1px solid var(--bs-border-color); border-radius: .9rem; background: var(--bs-body-bg); box-shadow: 0 3px 12px rgba(16,42,56,.06); }
-    .users-table tbody td { padding: .42rem 0; border: 0; }
-    .users-table tbody td:first-child { padding-bottom: .8rem; border-bottom: 1px solid var(--bs-border-color); }
-    .users-table td[data-label] { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-    .users-table td[data-label]::before { content: attr(data-label); color: var(--bs-secondary-color); font-size: .78rem; font-weight: 700; }
-    .users-table td[data-label="Ações"] { display: block; padding-top: .8rem; }
-    .users-table td[data-label="Ações"]::before { display: none; }
-    .users-table .users-actions, .users-table .users-actions form { flex: 1 1 0; }
-    .users-table .users-actions .btn { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: center; }
-    .users-table .text-secondary.small { overflow-wrap: anywhere; }
+    .users-table-wrapper { scrollbar-width: thin; }
+    .users-table th, .users-table td { padding: .75rem; }
+    .users-table .users-actions .btn { min-height: 44px; }
 }
 
 @media (max-width: 575.98px) {
