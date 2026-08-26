@@ -29,14 +29,15 @@
                         <i class="nav-icon bi bi-bullseye"></i><p>Leads</p>
                     </a>
                 </li>
-                <li class="nav-header">ADMINISTRAÇÃO</li>
-                <li class="nav-item">
-                    <a href="/usuarios/" class="nav-link <?= $activeMenu === 'usuarios' ? 'active' : '' ?>">
-                        <i class="nav-icon bi bi-people"></i><p>Usuários</p>
-                    </a>
-                </li>
+                <?php if (Auth::isAdmin()): ?>
+                    <li class="nav-header">ADMINISTRAÇÃO</li>
+                    <li class="nav-item">
+                        <a href="/usuarios/" class="nav-link <?= $activeMenu === 'usuarios' ? 'active' : '' ?>">
+                            <i class="nav-icon bi bi-people"></i><p>Usuários</p>
+                        </a>
+                    </li>
+                <?php endif; ?>
             </ul>
         </nav>
     </div>
 </aside>
-

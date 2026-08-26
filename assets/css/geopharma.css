@@ -5,6 +5,10 @@
 .app-footer { font-size: .875rem; }
 button[aria-busy="true"] { cursor: wait !important; opacity: .88; }
 button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
+.user-avatar { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: #dff7f1; color: #087f6a; font-weight: 800; }
+.empty-state { padding: 4rem 1.5rem; text-align: center; color: var(--bs-secondary-color); }
+.empty-state > i { display: block; margin-bottom: .75rem; color: #31c48d; font-size: 3rem; }
+.empty-state h4 { color: var(--bs-body-color); }
 
 /* Login */
 .login-page-geopharma { margin: 0; min-height: 100vh; min-height: 100dvh; background: #f3f7f6; color: #102a38; }

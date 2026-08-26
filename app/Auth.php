@@ -55,6 +55,19 @@ final class Auth
         exit;
     }
 
+    public static function isAdmin(): bool
+    {
+        return (self::user()['perfil'] ?? null) === 'administrador';
+    }
+
+    public static function requireAdmin(): void
+    {
+        self::requireLogin();
+        if (self::isAdmin()) return;
+        http_response_code(403);
+        exit('Acesso negado.');
+    }
+
     public static function logout(): void
     {
         $_SESSION = [];

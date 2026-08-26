@@ -1,0 +1,10 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/app/bootstrap.php'; Auth::requireAdmin();
+$dados=['nome'=>'','login'=>'','email'=>'','perfil'=>'vendedor','ativo'=>true]; $erros=[];
+if($_SERVER['REQUEST_METHOD']==='POST'){
+ $dados=['nome'=>trim((string)($_POST['nome']??'')),'login'=>mb_strtolower(trim((string)($_POST['login']??''))),'email'=>mb_strtolower(trim((string)($_POST['email']??''))),'perfil'=>(string)($_POST['perfil']??''),'ativo'=>isset($_POST['ativo'])]; $senha=(string)($_POST['senha']??'');
+ if(!Csrf::validate($_POST['csrf_token']??null))$erros[]='A sessão expirou. Atualize a página.'; if(mb_strlen($dados['nome'])<3)$erros[]='Informe o nome completo.'; if(!preg_match('/^[a-z0-9._-]{3,60}$/',$dados['login']))$erros[]='O login deve ter entre 3 e 60 caracteres válidos.'; if(!filter_var($dados['email'],FILTER_VALIDATE_EMAIL))$erros[]='Informe um e-mail válido.'; if(!in_array($dados['perfil'],['administrador','gestor','vendedor'],true))$erros[]='Selecione um perfil válido.'; if(strlen($senha)<8)$erros[]='A senha deve ter pelo menos 8 caracteres.';
+ if(!$erros){$pdo=Database::connection();$q=$pdo->prepare('SELECT COUNT(*) FROM usuarios WHERE login=:login OR email=:email');$q->execute(['login'=>$dados['login'],'email'=>$dados['email']]);if((int)$q->fetchColumn()>0)$erros[]='Já existe um usuário com esse login ou e-mail.';else{$q=$pdo->prepare('INSERT INTO usuarios(nome,login,email,senha_hash,perfil,ativo) VALUES(:nome,:login,:email,:senha,:perfil,:ativo)');$q->execute(['nome'=>$dados['nome'],'login'=>$dados['login'],'email'=>$dados['email'],'senha'=>password_hash($senha,PASSWORD_DEFAULT),'perfil'=>$dados['perfil'],'ativo'=>$dados['ativo']?1:0]);header('Location: /usuarios/?resultado=criado');exit;}}
+}
+$pageTitle='Novo usuário';$activeMenu='usuarios';require GEOPHARMA_ROOT.'/includes/header.php';require GEOPHARMA_ROOT.'/includes/page-start.php';require __DIR__.'/_form.php';require GEOPHARMA_ROOT.'/includes/page-end.php';require GEOPHARMA_ROOT.'/includes/footer.php';
