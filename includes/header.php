@@ -1,7 +1,10 @@
 <?php
 
+Auth::requireLogin();
+
 $pageTitle = $pageTitle ?? 'Dashboard';
 $activeMenu = $activeMenu ?? 'dashboard';
+$usuarioAtual = Auth::user();
 ?>
 <!doctype html>
 <html lang="pt-BR">
@@ -26,9 +29,17 @@ $activeMenu = $activeMenu ?? 'dashboard';
                 <li class="nav-item d-none d-md-block"><a href="/" class="nav-link">Início</a></li>
             </ul>
             <ul class="navbar-nav ms-auto">
-                <li class="nav-item"><span class="nav-link"><i class="bi bi-person-circle me-1"></i>Usuário</span></li>
+                <li class="nav-item dropdown">
+                    <button class="nav-link btn dropdown-toggle" data-bs-toggle="dropdown" type="button">
+                        <i class="bi bi-person-circle me-1"></i><?= htmlspecialchars($usuarioAtual['nome'] ?? 'Usuário') ?>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text small text-secondary">@<?= htmlspecialchars($usuarioAtual['login'] ?? '') ?></span></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Sair</a></li>
+                    </ul>
+                </li>
             </ul>
         </div>
     </nav>
     <?php require __DIR__ . '/sidebar.php'; ?>
-

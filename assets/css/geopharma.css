@@ -4,3 +4,67 @@
 .map-placeholder i { font-size: 3rem; color: #31c48d; }
 .app-footer { font-size: .875rem; }
 
+/* Login */
+.login-page-geopharma { margin: 0; min-height: 100vh; min-height: 100dvh; background: #f3f7f6; color: #102a38; }
+.login-shell { position: relative; display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(420px, .92fr); min-height: 100vh; min-height: 100dvh; overflow: hidden; }
+.login-brand-panel { position: relative; display: flex; align-items: center; padding: clamp(3rem, 7vw, 7rem); color: #fff; background: radial-gradient(circle at 14% 16%, rgba(20,184,166,.3), transparent 34%), linear-gradient(145deg, #061827 0%, #0a3040 52%, #075c55 100%); }
+.login-brand-panel::after { content: ''; position: absolute; inset: 0; opacity: .11; background-image: radial-gradient(circle, #fff 1px, transparent 1.2px); background-size: 24px 24px; mask-image: linear-gradient(to right, #000, transparent 90%); }
+.login-brand-content { position: relative; z-index: 2; max-width: 660px; }
+.login-hero-logo { width: clamp(92px, 9vw, 138px); height: auto; margin-bottom: 1.5rem; filter: drop-shadow(0 18px 24px rgba(0,0,0,.2)); }
+.login-eyebrow { display: inline-flex; padding: .42rem .8rem; border: 1px solid rgba(94,234,212,.32); border-radius: 999px; color: #99f6e4; background: rgba(13,148,136,.14); font-size: .76rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.login-brand-content h1 { margin: 1.35rem 0 1rem; font-size: clamp(2.5rem, 4.8vw, 5rem); font-weight: 800; line-height: .98; letter-spacing: -.055em; }
+.login-brand-content h1 span { color: #5eead4; }
+.login-brand-content > p { max-width: 590px; color: #cfe7e5; font-size: clamp(1rem, 1.3vw, 1.22rem); line-height: 1.7; }
+.login-brand-pills { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+.login-brand-pills span { padding: .7rem 1rem; border: 1px solid rgba(255,255,255,.13); border-radius: .8rem; background: rgba(255,255,255,.07); color: #e6fffb; font-size: .9rem; backdrop-filter: blur(8px); }
+.login-brand-pills i { margin-right: .35rem; color: #5eead4; }
+.login-form-panel { z-index: 2; display: flex; align-items: center; justify-content: center; padding: clamp(1.5rem, 5vw, 5rem); background: rgba(248,251,250,.94); }
+.login-card { width: min(100%, 440px); }
+.login-mobile-brand { display: none; align-items: center; justify-content: center; gap: .65rem; margin-bottom: 1.8rem; font-size: 1.55rem; color: #0c2f3c; }
+.login-mobile-brand img { width: 54px; height: 54px; object-fit: contain; }
+.login-mobile-brand span { color: #0f9f82; }
+.login-heading > span { color: #0f9f82; font-weight: 800; font-size: .82rem; letter-spacing: .08em; text-transform: uppercase; }
+.login-heading h2 { margin: .4rem 0 .45rem; color: #102a38; font-size: clamp(2rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -.04em; }
+.login-heading p { margin-bottom: 2rem; color: #6b7f87; }
+.login-alert { display: flex; gap: .65rem; align-items: center; padding: .85rem 1rem; border: 0; border-radius: .85rem; font-size: .9rem; }
+.login-form { display: grid; gap: 1.25rem; }
+.login-field label { margin-bottom: .5rem; color: #243c46; font-size: .88rem; font-weight: 700; }
+.login-label-row { display: flex; align-items: center; justify-content: space-between; }
+.login-forgot { margin-bottom: .5rem; padding: 0; border: 0; background: none; color: #0d947a; font-size: .83rem; font-weight: 700; }
+.login-forgot:hover { color: #08705d; }
+.login-input-wrap { position: relative; }
+.login-input-wrap > i { position: absolute; top: 50%; left: 1rem; transform: translateY(-50%); color: #82949a; font-size: 1.05rem; }
+.login-input-wrap input { width: 100%; min-height: 54px; padding: .8rem 3rem; border: 1px solid #d5e0df; border-radius: .85rem; outline: none; background: #fff; color: #17343f; transition: border-color .2s, box-shadow .2s, transform .2s; }
+.login-input-wrap input::placeholder { color: #9aabad; }
+.login-input-wrap input:focus { border-color: #14a68c; box-shadow: 0 0 0 .24rem rgba(20,166,140,.12); }
+.login-password-toggle { position: absolute; top: 50%; right: .75rem; width: 40px; height: 40px; transform: translateY(-50%); border: 0; border-radius: .6rem; background: transparent; color: #71858b; }
+.login-password-toggle:hover { background: #edf6f4; color: #0d947a; }
+.login-submit { display: flex; align-items: center; justify-content: space-between; min-height: 56px; margin-top: .4rem; padding: .85rem 1.2rem  .85rem 1.4rem; border: 0; border-radius: .9rem; background: linear-gradient(120deg, #087f6a, #11a98b); color: #fff; font-weight: 800; box-shadow: 0 14px 28px rgba(10,130,108,.22); transition: transform .2s, box-shadow .2s; }
+.login-submit:hover { transform: translateY(-2px); box-shadow: 0 18px 32px rgba(10,130,108,.3); }
+.login-submit i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.15); }
+.login-support { margin: 1.4rem 0 0; text-align: center; color: #809196; font-size: .8rem; }
+.login-support i { margin-right: .25rem; color: #0f9f82; }
+.login-orb { position: absolute; z-index: 1; border-radius: 50%; filter: blur(2px); pointer-events: none; }
+.login-orb-one { right: 39%; bottom: -90px; width: 210px; height: 210px; background: rgba(45,212,191,.12); }
+.login-orb-two { top: -90px; right: -70px; width: 190px; height: 190px; background: rgba(13,148,136,.1); }
+
+@media (max-width: 991.98px) {
+    .login-shell { grid-template-columns: 1fr; }
+    .login-brand-panel { display: none; }
+    .login-form-panel { min-height: 100vh; min-height: 100dvh; padding: max(1.25rem, env(safe-area-inset-top)) max(1.25rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1.25rem, env(safe-area-inset-left)); background: radial-gradient(circle at 100% 0, rgba(45,212,191,.14), transparent 34%), #f6faf9; }
+    .login-mobile-brand { display: flex; }
+    .login-card { padding: clamp(1.4rem, 6vw, 2.3rem); border: 1px solid rgba(14,116,102,.09); border-radius: 1.4rem; background: rgba(255,255,255,.86); box-shadow: 0 26px 60px rgba(15,55,63,.12); backdrop-filter: blur(12px); }
+}
+
+@media (max-width: 420px) {
+    .login-form-panel { padding: 0; align-items: stretch; }
+    .login-card { display: flex; flex-direction: column; justify-content: center; width: 100%; min-height: 100dvh; padding: 1.35rem; border: 0; border-radius: 0; box-shadow: none; }
+    .login-mobile-brand { margin-bottom: 1.35rem; }
+    .login-heading h2 { font-size: 2rem; }
+    .login-heading p { margin-bottom: 1.5rem; }
+    .login-input-wrap input, .login-submit { min-height: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .login-input-wrap input, .login-submit { transition: none; }
+}

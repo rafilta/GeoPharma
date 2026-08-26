@@ -3,6 +3,12 @@
 declare(strict_types=1);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_set_cookie_params([
+        'httponly' => true,
+        'secure' => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'samesite' => 'Lax',
+        'path' => '/',
+    ]);
     session_start();
 }
 
@@ -17,4 +23,3 @@ spl_autoload_register(static function (string $class): void {
         require_once $file;
     }
 });
-
