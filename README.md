@@ -40,7 +40,7 @@ usuários, usando componentes do AdminLTE e Bootstrap já incluídos no projeto.
 
 ## Cadastro de clientes
 
-O cadastro de clientes não possui um campo separado de WhatsApp. Para pessoas
-jurídicas, ao completar ou consultar um CNPJ, o sistema busca os dados públicos
+O cadastro de clientes trabalha diretamente com CNPJ e não possui campos de
+tipo de pessoa ou WhatsApp. Ao completar ou consultar um CNPJ, o sistema busca os dados públicos
 na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. O
 usuário deve conferir e pode editar as informações antes de salvar.
