@@ -41,6 +41,7 @@ usuários, usando componentes do AdminLTE e Bootstrap já incluídos no projeto.
 ## Cadastro de clientes
 
 O cadastro de clientes trabalha diretamente com CNPJ e não possui campos de
-tipo de pessoa ou WhatsApp. Ao completar ou consultar um CNPJ, o sistema busca os dados públicos
-na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. O
+tipo de pessoa ou WhatsApp. Ao completar um CNPJ, o sistema busca os dados públicos
+na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. A
+latitude e a longitude são obtidas automaticamente pela geolocalização do CEP. O
 usuário deve conferir e pode editar as informações antes de salvar.

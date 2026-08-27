@@ -40,7 +40,6 @@
     const clienteForm = document.querySelector('[data-cliente-form]');
     if (clienteForm instanceof HTMLFormElement) {
         const documento = clienteForm.querySelector('#documento');
-        const botao = clienteForm.querySelector('[data-consultar-cnpj]');
         const status = clienteForm.querySelector('[data-cnpj-status]');
         let ultimoCnpj = '';
         let consultando = false;
@@ -56,15 +55,13 @@
             const cnpj = somenteNumeros(documento.value);
             if (cnpj.length !== 14 || consultando || cnpj === ultimoCnpj) return;
             consultando = true;
-            botao.disabled = true;
-            botao.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Consultando...';
-            status.textContent = 'Buscando os dados públicos do CNPJ...';
+            status.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Buscando os dados públicos e a localização...';
             status.className = 'form-text text-success';
             try {
                 const resposta = await fetch('/clientes/consultar-cnpj.php?cnpj=' + encodeURIComponent(cnpj), {headers: {'Accept': 'application/json'}});
                 const dados = await resposta.json();
                 if (!resposta.ok) throw new Error(dados.erro || 'Não foi possível consultar o CNPJ.');
-                ['razao_social','nome_fantasia','telefone','email','cep','logradouro','numero','complemento','bairro','cidade','estado'].forEach((campo) => {
+                ['razao_social','nome_fantasia','telefone','email','cep','logradouro','numero','complemento','bairro','cidade','estado','latitude','longitude'].forEach((campo) => {
                     const input = clienteForm.elements.namedItem(campo);
                     if (input instanceof HTMLInputElement && dados[campo]) input.value = dados[campo];
                 });
@@ -76,8 +73,6 @@
                 status.className = 'form-text text-danger fw-semibold';
             } finally {
                 consultando = false;
-                botao.disabled = false;
-                botao.innerHTML = '<i class="bi bi-search me-1"></i>Consultar CNPJ';
             }
         };
 
@@ -85,7 +80,6 @@
             documento.value = formatarDocumento(documento.value);
             if (somenteNumeros(documento.value).length === 14) consultar();
         });
-        botao.addEventListener('click', consultar);
         documento.value = formatarDocumento(documento.value);
     }
 })();

@@ -13,7 +13,7 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 define('GEOPHARMA_ROOT', dirname(__DIR__));
-define('GEOPHARMA_VERSION', '1.1.1');
+define('GEOPHARMA_VERSION', '1.1.2');
 
 date_default_timezone_set('America/Sao_Paulo');
 
