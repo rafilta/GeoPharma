@@ -16,7 +16,7 @@ require GEOPHARMA_ROOT.'/includes/header.php';require GEOPHARMA_ROOT.'/includes/
     </div>
     <div class="map-status" data-map-status><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>Carregando clientes reais...</div>
     <div id="geopharma-map" class="geopharma-map" aria-label="Mapa interativo de clientes e oportunidades"></div>
-    <div class="map-legend"><span><i class="legend-dot legend-client"></i>Cliente</span><span><i class="legend-dot legend-opportunity"></i>Oportunidade OSM</span><span><i class="legend-dot legend-current"></i>Você</span></div>
+    <div class="map-legend"><span><i class="legend-dot legend-client"></i>Cliente</span><span><i class="legend-dot legend-opportunity"></i>Oportunidade</span><span><i class="legend-dot legend-captured"></i>Lead em trabalho</span><span><i class="legend-dot legend-current"></i>Você</span></div>
     <section class="map-detail" data-map-detail hidden>
         <button type="button" class="map-detail-close" data-map-detail-close aria-label="Fechar detalhes"><i class="bi bi-x-lg"></i></button>
         <span class="badge text-bg-success mb-2" data-detail-type></span>

@@ -19,7 +19,7 @@
         if(loading){const spinner=document.createElement('span');spinner.className='spinner-border spinner-border-sm';spinner.setAttribute('aria-hidden','true');status.append(spinner);}
         const text=document.createTextNode(message);status.append(text);status.style.background=error?'rgba(153,27,27,.94)':'rgba(15,55,63,.9)';
     };
-    const icon=(type)=>L.divIcon({className:'',html:`<span class="map-marker map-marker-${type}"><i class="bi ${type==='client'?'bi-building':'bi-capsule'}"></i></span>`,iconSize:[36,36],iconAnchor:[18,36]});
+    const icon=(type)=>L.divIcon({className:'',html:`<span class="map-marker map-marker-${type}"><i class="bi ${type==='client'?'bi-building':type==='captured'?'bi-person-check-fill':'bi-capsule'}"></i></span>`,iconSize:[36,36],iconAnchor:[18,36]});
     const text=(selector,value='—')=>{detail.querySelector(selector).textContent=value||'—';};
     const formatCnpj=value=>{const digits=String(value||'').replace(/\D/g,'');return digits.length===14?digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5'):'';};
     const routeUrl=(lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`;
@@ -66,7 +66,7 @@
         catch(error){if(request===searchRequest)setStatus(error.message,false,true);}
     };
     const addItem=(item,type)=>{
-        const marker=L.marker([item.latitude,item.longitude],{icon:icon(type),title:item.nome_fantasia||item.nome||item.razao_social});
+        const markerType=type==='opportunity'&&item.capturado?'captured':type;const marker=L.marker([item.latitude,item.longitude],{icon:icon(markerType),title:item.nome_fantasia||item.nome||item.razao_social});
         marker.on('click',()=>openDetail(item,type));(type==='client'?clientLayer:opportunityLayer).addLayer(marker);
         (type==='client'?clientItems:opportunityItems).push({marker,item,type});
         return marker;
@@ -123,7 +123,7 @@
     detail.querySelector('[data-detail-capture]').addEventListener('click',async event=>{
         if(!selectedOpportunity)return;const button=event.currentTarget;const original=button.innerHTML;button.disabled=true;button.setAttribute('aria-busy','true');button.innerHTML='<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Capturando...';
         const data=new FormData();data.append('csrf_token',app.dataset.csrf);data.append('osm_id',selectedOpportunity.osm_id||'');data.append('nome',selectedOpportunity.nome||'');data.append('cnpj',selectedOpportunity.cnpj||'');data.append('telefone',selectedOpportunity.telefone||'');data.append('endereco',selectedOpportunity.endereco||'');data.append('latitude',selectedOpportunity.latitude);data.append('longitude',selectedOpportunity.longitude);
-        try{const response=await fetch('/mapa/capturar-lead.php',{method:'POST',body:data,headers:{Accept:'application/json'}});const result=await response.json();if(!response.ok)throw new Error(result.erro||'Não foi possível capturar o lead.');selectedOpportunity.capturado=true;button.innerHTML='<i class="bi bi-check-lg me-1"></i>Lead capturado';setStatus(result.mensagem);window.setTimeout(()=>setStatus(''),2500);}
+        try{const response=await fetch('/mapa/capturar-lead.php',{method:'POST',body:data,headers:{Accept:'application/json'}});const result=await response.json();if(!response.ok)throw new Error(result.erro||'Não foi possível capturar o lead.');selectedOpportunity.capturado=true;const capturedItem=opportunityItems.find(entry=>entry.item.osm_id===selectedOpportunity.osm_id);if(capturedItem)capturedItem.marker.setIcon(icon('captured'));button.innerHTML='<i class="bi bi-check-lg me-1"></i>Lead capturado';setStatus(result.mensagem);window.setTimeout(()=>setStatus(''),2500);}
         catch(error){button.innerHTML=original;button.disabled=false;setStatus(error.message||'Erro ao capturar lead.',false,true);}
         finally{button.removeAttribute('aria-busy');}
     });
