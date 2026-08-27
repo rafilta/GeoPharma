@@ -6,5 +6,6 @@
 <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js?v=<?= GEOPHARMA_VERSION ?>"></script>
 <script src="/assets/js/adminlte.min.js?v=<?= GEOPHARMA_VERSION ?>"></script>
 <script src="/assets/js/geopharma.js?v=<?= GEOPHARMA_VERSION ?>"></script>
+<?php foreach(($extraScripts??[]) as $script):?><script src="<?= htmlspecialchars($script) ?>"></script><?php endforeach;?>
 </body>
 </html>

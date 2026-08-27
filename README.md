@@ -47,3 +47,10 @@ tipo de pessoa ou WhatsApp. Ao completar um CNPJ, o sistema busca os dados públ
 na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. A
 latitude e a longitude são obtidas automaticamente pela geolocalização do CEP. O
 usuário deve conferir e pode editar as informações antes de salvar.
+
+## Mapa de oportunidades
+
+O mapa usa os clientes e coordenadas reais do MySQL, os mapas do OpenStreetMap
+e farmácias consultadas em tempo real no Overpass/OpenStreetMap. Dados fictícios
+não devem ser exibidos como clientes ou oportunidades. O mapa também permite
+usar a localização real do aparelho, abrir rota e registrar visitas aos clientes.

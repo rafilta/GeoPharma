@@ -15,6 +15,7 @@ $usuarioAtual = Auth::user();
     <link rel="stylesheet" href="/assets/vendor/bootstrap-icons/bootstrap-icons.min.css?v=<?= GEOPHARMA_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/adminlte.min.css?v=<?= GEOPHARMA_VERSION ?>">
     <link rel="stylesheet" href="/assets/css/geopharma.css?v=<?= GEOPHARMA_VERSION ?>">
+    <?php foreach(($extraStyles??[]) as $style):?><link rel="stylesheet" href="<?= htmlspecialchars($style) ?>"><?php endforeach;?>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
 <div class="app-wrapper">
