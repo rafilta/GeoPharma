@@ -37,6 +37,8 @@ usuários, usando componentes do AdminLTE e Bootstrap já incluídos no projeto.
 - spinner e bloqueio temporário em todos os botões que enviam formulários;
 - controles com área de toque adequada e validação no servidor;
 - testes obrigatórios nas larguras de 360 px e 390 px antes da publicação.
+- listagens limitadas a 10 registros por página, com paginação ao ultrapassar esse total;
+- máscaras de exibição para documentos, telefones e demais dados formatáveis.
 
 ## Cadastro de clientes
 

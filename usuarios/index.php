@@ -2,7 +2,16 @@
 declare(strict_types=1);
 require dirname(__DIR__) . '/app/bootstrap.php';
 Auth::requireAdmin();
-$usuarios = Database::connection()->query('SELECT id,nome,login,email,perfil,ativo,ultimo_acesso_em FROM usuarios ORDER BY nome')->fetchAll();
+$pdo=Database::connection();
+$paginaAtual=Pagination::currentPage();
+$totalUsuarios=(int)$pdo->query('SELECT COUNT(*) FROM usuarios')->fetchColumn();
+$totalPaginas=Pagination::totalPages($totalUsuarios);
+$paginaAtual=min($paginaAtual,$totalPaginas);
+$listar=$pdo->prepare('SELECT id,nome,login,email,perfil,ativo,ultimo_acesso_em FROM usuarios ORDER BY nome LIMIT :limite OFFSET :inicio');
+$listar->bindValue(':limite',Pagination::PER_PAGE,PDO::PARAM_INT);
+$listar->bindValue(':inicio',Pagination::offset($paginaAtual),PDO::PARAM_INT);
+$listar->execute();
+$usuarios=$listar->fetchAll();
 $mensagens = ['criado'=>['success','Usuário cadastrado com sucesso.'],'atualizado'=>['success','Usuário atualizado com sucesso.'],'excluido'=>['success','Usuário excluído com sucesso.'],'proprio_usuario'=>['warning','Você não pode excluir a própria conta.'],'erro'=>['danger','Não foi possível concluir a operação.']];
 $mensagem = $mensagens[$_GET['resultado'] ?? ''] ?? null;
 $pageTitle='Usuários'; $activeMenu='usuarios';
@@ -22,6 +31,7 @@ require GEOPHARMA_ROOT.'/includes/header.php'; require GEOPHARMA_ROOT.'/includes
   <td data-label="Ações"><div class="d-flex justify-content-end gap-2 users-actions"><a href="/usuarios/edit.php?id=<?= (int)$usuario['id'] ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i><span class="ms-1">Editar</span></a><form method="post" action="/usuarios/delete.php" onsubmit="return confirm('Excluir definitivamente este usuário?');"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(Csrf::token()) ?>"><input type="hidden" name="id" value="<?= (int)$usuario['id'] ?>"><button type="submit" class="btn btn-sm btn-outline-danger" data-loading-label="Excluindo..." <?= (int)$usuario['id']===(int)(Auth::user()['id']??0)?'disabled title="Você não pode excluir sua própria conta"':'' ?>><i class="bi bi-trash"></i><span class="ms-1">Excluir</span></button></form></div></td>
  </tr><?php endforeach; ?>
  </tbody></table></div><?php endif; ?>
- </div><div class="card-footer text-secondary small"><?= count($usuarios) ?> usuário(s) cadastrado(s)</div>
+ </div><div class="card-footer text-secondary small"><?= $totalUsuarios ?> usuário(s) cadastrado(s)</div>
+ <?php require GEOPHARMA_ROOT.'/includes/pagination.php';?>
 </div>
 <?php require GEOPHARMA_ROOT.'/includes/page-end.php'; require GEOPHARMA_ROOT.'/includes/footer.php'; ?>
