@@ -4,6 +4,7 @@
     if(!app||typeof L==='undefined') return;
     const status=app.querySelector('[data-map-status]');
     const search=app.querySelector('#map-search');
+    const suggestions=app.querySelector('#map-suggestions');
     const radius=app.querySelector('#map-radius');
     const detail=app.querySelector('[data-map-detail]');
     const clientLayer=L.layerGroup();
@@ -11,7 +12,7 @@
     const map=L.map('geopharma-map',{zoomControl:true}).setView([-22.9068,-43.1729],12);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
     clientLayer.addTo(map);opportunityLayer.addTo(map);
-    let currentPosition=null;let currentMarker=null;let selectedClient=null;const clientItems=[];const opportunityItems=[];
+    let currentPosition=null;let searchCenter=null;let currentMarker=null;let centerMarker=null;let radiusCircle=null;let selectedClient=null;let searchTimer=null;let searchRequest=0;const clientItems=[];const opportunityItems=[];
     const setStatus=(message,loading=false,error=false)=>{
         if(!message){status.hidden=true;return;}
         status.hidden=false;status.innerHTML='';
@@ -35,13 +36,32 @@
         const edit=detail.querySelector('[data-detail-edit]');edit.hidden=type!=='client';if(type==='client')edit.href=`/clientes/edit.php?id=${item.id}`;
         detail.querySelector('[data-detail-visit-button]').hidden=type!=='client';
     };
-    const applySearch=()=>{
-        const term=search.value.trim().toLocaleLowerCase('pt-BR');
-        [...clientItems,...opportunityItems].forEach(({marker,item,type})=>{
-            const haystack=[item.nome,item.nome_fantasia,item.razao_social,item.documento_formatado,item.cidade].filter(Boolean).join(' ').toLocaleLowerCase('pt-BR');
-            const layer=type==='client'?clientLayer:opportunityLayer;
-            if(!term||haystack.includes(term)){if(!layer.hasLayer(marker))layer.addLayer(marker);}else if(layer.hasLayer(marker))layer.removeLayer(marker);
-        });
+    const hideSuggestions=()=>{suggestions.hidden=true;suggestions.innerHTML='';search.setAttribute('aria-expanded','false');};
+    const drawRadius=()=>{
+        if(!searchCenter)return;
+        if(radiusCircle)map.removeLayer(radiusCircle);
+        radiusCircle=L.circle([searchCenter.latitude,searchCenter.longitude],{radius:Number(radius.value),color:'#0f9f82',weight:2,fillColor:'#20c997',fillOpacity:.1,dashArray:'7 6'}).addTo(map);
+        map.fitBounds(radiusCircle.getBounds(),{padding:[30,30]});
+    };
+    const chooseAddress=(address,{load=true}={})=>{
+        searchCenter={latitude:Number(address.latitude),longitude:Number(address.longitude)};search.value=address.rotulo;hideSuggestions();
+        if(centerMarker)map.removeLayer(centerMarker);
+        centerMarker=L.marker([searchCenter.latitude,searchCenter.longitude],{icon:L.divIcon({className:'',html:'<span class="map-center-marker"><i class="bi bi-geo-alt-fill"></i></span>',iconSize:[34,34],iconAnchor:[17,34]})}).addTo(map).bindTooltip('Centro da pesquisa');
+        drawRadius();if(load)loadOpportunities();
+    };
+    const reverseAddress=async position=>{
+        try{const response=await fetch(`/mapa/geocodificar.php?modo=reverso&lat=${position.latitude}&lng=${position.longitude}`,{headers:{Accept:'application/json'}});const data=await response.json();if(response.ok&&data.enderecos?.length)search.value=data.enderecos[0].rotulo;else search.value=`${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}`;}
+        catch(_error){search.value=`${position.latitude.toFixed(6)}, ${position.longitude.toFixed(6)}`;}
+    };
+    const renderSuggestions=items=>{
+        suggestions.innerHTML='';if(!items.length){hideSuggestions();return;}
+        items.forEach(address=>{const button=document.createElement('button');button.type='button';button.className='map-suggestion';button.setAttribute('role','option');const name=document.createElement('strong');name.textContent=address.nome;const detailText=document.createElement('small');detailText.textContent=address.rotulo;button.append(name,detailText);button.addEventListener('click',()=>chooseAddress(address));suggestions.append(button);});
+        suggestions.hidden=false;search.setAttribute('aria-expanded','true');
+    };
+    const searchAddresses=async()=>{
+        const query=search.value.trim();if(query.length<3){hideSuggestions();return;}const request=++searchRequest;
+        try{const response=await fetch(`/mapa/geocodificar.php?q=${encodeURIComponent(query)}`,{headers:{Accept:'application/json'}});const data=await response.json();if(request!==searchRequest)return;if(!response.ok)throw new Error(data.erro||'Não foi possível buscar o endereço.');renderSuggestions(data.enderecos||[]);}
+        catch(error){if(request===searchRequest)setStatus(error.message,false,true);}
     };
     const addItem=(item,type)=>{
         const marker=L.marker([item.latitude,item.longitude],{icon:icon(type),title:item.nome_fantasia||item.nome||item.razao_social});
@@ -64,26 +84,29 @@
         if(!navigator.geolocation){reject(new Error('Este aparelho não oferece geolocalização.'));return;}
         if(announce)setStatus('Obtendo sua localização real...',true);
         navigator.geolocation.getCurrentPosition(position=>{
-            currentPosition={latitude:position.coords.latitude,longitude:position.coords.longitude};
+            currentPosition={latitude:position.coords.latitude,longitude:position.coords.longitude};searchCenter={...currentPosition};
             if(currentMarker)map.removeLayer(currentMarker);
             currentMarker=L.circleMarker([currentPosition.latitude,currentPosition.longitude],{radius:9,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1}).addTo(map).bindTooltip('Sua localização');
-            map.setView([currentPosition.latitude,currentPosition.longitude],15);if(announce){setStatus('Localização atualizada.');window.setTimeout(()=>setStatus(''),1800);}resolve(currentPosition);
+            reverseAddress(currentPosition);drawRadius();if(announce){setStatus('Localização atualizada. Buscando farmácias no raio escolhido.');loadOpportunities();}resolve(currentPosition);
         },()=>{const error=new Error('Não foi possível acessar sua localização. Verifique a permissão do navegador.');if(announce)setStatus(error.message,false,true);reject(error);},{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
     });
     const loadOpportunities=async()=>{
         try{
-            let origin=currentPosition;if(!origin){const center=map.getCenter();origin={latitude:center.lat,longitude:center.lng};}
+            const origin=searchCenter;if(!origin)throw new Error('Escolha um endereço ou toque em Minha localização.');drawRadius();
             setStatus('Buscando farmácias reais no OpenStreetMap...',true);opportunityLayer.clearLayers();opportunityItems.length=0;
             const meters=Number(radius.value);const response=await fetch(`/mapa/oportunidades.php?lat=${origin.latitude}&lng=${origin.longitude}&raio=${meters}`,{headers:{Accept:'application/json'}});const data=await response.json();
             if(!response.ok)throw new Error(data.erro||'Não foi possível buscar as farmácias.');
-            data.oportunidades.forEach(item=>addItem(item,'opportunity'));applySearch();
+            data.oportunidades.forEach(item=>addItem(item,'opportunity'));
             setStatus(`${data.oportunidades.length} farmácia(s) real(is) encontrada(s) no OpenStreetMap.`);window.setTimeout(()=>setStatus(''),3200);
         }catch(error){setStatus(error.message||'Erro ao buscar oportunidades.',false,true);}
     };
     app.querySelector('[data-map-locate]').addEventListener('click',()=>locate());
     app.querySelector('[data-map-opportunities]').addEventListener('click',loadOpportunities);
     app.querySelector('[data-map-detail-close]').addEventListener('click',()=>{detail.hidden=true;});
-    search.addEventListener('input',applySearch);
+    search.addEventListener('input',()=>{searchCenter=null;window.clearTimeout(searchTimer);searchTimer=window.setTimeout(searchAddresses,350);});
+    search.addEventListener('keydown',event=>{if(event.key==='Escape')hideSuggestions();});
+    radius.addEventListener('change',()=>{if(searchCenter){drawRadius();loadOpportunities();}});
+    document.addEventListener('click',event=>{if(!event.target.closest('.map-search'))hideSuggestions();});
     const modalElement=document.querySelector('#visitModal');const visitModal=bootstrap.Modal.getOrCreateInstance(modalElement);const visitForm=modalElement.querySelector('[data-visit-form]');
     detail.querySelector('[data-detail-visit-button]').addEventListener('click',()=>{
         if(!selectedClient)return;
