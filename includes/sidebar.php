@@ -36,6 +36,11 @@
                             <i class="nav-icon bi bi-people"></i><p>Usuários</p>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a href="/documentacao/" class="nav-link <?= $activeMenu === 'documentacao' ? 'active' : '' ?>">
+                            <i class="nav-icon bi bi-journal-text"></i><p>Documentação</p>
+                        </a>
+                    </li>
                 <?php endif; ?>
             </ul>
         </nav>

@@ -105,3 +105,13 @@ button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 @media (prefers-reduced-motion: reduce) {
     .login-input-wrap input, .login-submit { transition: none; }
 }
+
+/* Documentação */
+.docs-hero { overflow: hidden; color: #fff; background: radial-gradient(circle at 90% 10%, rgba(45,212,191,.28), transparent 32%), linear-gradient(135deg,#082634,#0a5a53); }
+.docs-hero .text-secondary { color: #d1eeea !important; }
+.docs-feature { display: flex; gap: .85rem; height: 100%; padding: 1rem; border: 1px solid var(--bs-border-color); border-radius: .75rem; background: var(--bs-tertiary-bg); }
+.docs-feature > i { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: .65rem; color: #087f6a; background: #dff7f1; font-size: 1.15rem; }
+.docs-feature strong,.docs-feature span { display: block; }.docs-feature span { margin-top: .2rem; color: var(--bs-secondary-color); font-size: .875rem; line-height: 1.4; }
+.docs-flow { display: grid; gap: 0; padding: 0; list-style: none; }.docs-flow li { position: relative; display: flex; gap: .85rem; padding-bottom: 1.25rem; }.docs-flow li:not(:last-child)::after { position: absolute; top: 34px; bottom: 0; left: 16px; width: 2px; content: ''; background: #ccece5; }.docs-flow li > span { z-index: 1; display: grid; flex: 0 0 34px; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: #0f9f82; font-weight: 800; }.docs-flow strong,.docs-flow small { display: block; }.docs-flow small { margin-top: .15rem; color: var(--bs-secondary-color); }
+.docs-checklist { display: grid; gap: 1rem; padding: 0; list-style: none; }.docs-checklist li { display: flex; gap: .75rem; }.docs-checklist > li > i { margin-top: .1rem; color: #0f9f82; }.docs-checklist strong,.docs-checklist small { display: block; }.docs-checklist small { margin-top: .2rem; color: var(--bs-secondary-color); line-height: 1.45; }
+.docs-table { min-width: 760px; }.docs-table th:first-child { width: 190px; }.docs-table td { white-space: normal; }
