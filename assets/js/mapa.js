@@ -42,7 +42,7 @@
     const drawRadius=()=>{
         if(!searchCenter)return;
         if(radiusCircle)map.removeLayer(radiusCircle);
-        radiusCircle=L.circle([searchCenter.latitude,searchCenter.longitude],{radius:Number(radius.value),color:'#0f9f82',weight:2,fillColor:'#20c997',fillOpacity:.1,dashArray:'7 6'}).addTo(map);
+        const meters=Math.max(1,Number(radius.value)||1)*1000;radiusCircle=L.circle([searchCenter.latitude,searchCenter.longitude],{radius:meters,color:'#0f9f82',weight:2,fillColor:'#20c997',fillOpacity:.1,dashArray:'7 6'}).addTo(map);
         map.fitBounds(radiusCircle.getBounds(),{padding:[30,30]});
     };
     const chooseAddress=(address,{load=true}={})=>{
@@ -96,7 +96,7 @@
         try{
             const origin=searchCenter;if(!origin)throw new Error('Escolha um endereço ou toque em Minha localização.');drawRadius();
             setStatus('Buscando farmácias reais no OpenStreetMap...',true);opportunityLayer.clearLayers();opportunityItems.length=0;
-            const meters=Number(radius.value);const response=await fetch(`/mapa/oportunidades.php?lat=${origin.latitude}&lng=${origin.longitude}&raio=${meters}`,{headers:{Accept:'application/json'}});const data=await response.json();
+            const kilometers=Math.max(1,Number(radius.value)||1);radius.value=String(kilometers);const meters=Math.round(kilometers*1000);const response=await fetch(`/mapa/oportunidades.php?lat=${origin.latitude}&lng=${origin.longitude}&raio=${meters}`,{headers:{Accept:'application/json'}});const data=await response.json();
             if(!response.ok)throw new Error(data.erro||'Não foi possível buscar as farmácias.');
             data.oportunidades.forEach(item=>addItem(item,'opportunity'));
             setStatus(`${data.oportunidades.length} farmácia(s) real(is) encontrada(s) no OpenStreetMap.`);window.setTimeout(()=>setStatus(''),3200);

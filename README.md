@@ -63,5 +63,6 @@ O mapa usa os clientes e coordenadas reais do MySQL, os mapas do OpenStreetMap
 e farmácias consultadas em tempo real no Overpass/OpenStreetMap. Dados fictícios
 não devem ser exibidos como clientes ou oportunidades. O mapa também permite
 usar a localização real do aparelho, abrir rota e registrar visitas aos clientes.
+O raio é informado livremente em quilômetros, entre 1 e 500 km.
 O cabeçalho permanece fixo durante a navegação; o rodapé acompanha o conteúdo
 para não ocupar a área útil do mapa.

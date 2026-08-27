@@ -9,8 +9,8 @@ require GEOPHARMA_ROOT.'/includes/header.php';require GEOPHARMA_ROOT.'/includes/
 <div class="map-workspace card card-outline card-success shadow-sm" data-map-app data-csrf="<?= htmlspecialchars(Csrf::token()) ?>">
     <div class="map-toolbar">
         <div class="map-search"><i class="bi bi-geo-alt"></i><label for="map-search" class="visually-hidden">Endereço da pesquisa</label><input id="map-search" type="search" class="form-control" placeholder="Digite um endereço" autocomplete="off" aria-autocomplete="list" aria-controls="map-suggestions" aria-expanded="false"><div id="map-suggestions" class="map-suggestions" role="listbox" hidden></div></div>
-        <label for="map-radius" class="visually-hidden">Raio de pesquisa</label>
-        <select id="map-radius" class="form-select map-radius" title="Raio de pesquisa"><option value="1000">1 km</option><option value="5000" selected>5 km</option><option value="10000">10 km</option><option value="20000">20 km</option></select>
+        <label for="map-radius" class="visually-hidden">Raio de pesquisa em quilômetros</label>
+        <div class="input-group map-radius"><input id="map-radius" type="number" class="form-control" value="5" min="1" step="1" inputmode="numeric" title="Raio de pesquisa em quilômetros" aria-label="Raio de pesquisa em quilômetros"><span class="input-group-text">km</span></div>
         <button type="button" class="btn btn-outline-success" data-map-locate aria-label="Usar minha localização"><i class="bi bi-crosshair me-1"></i><span>Minha localização</span></button>
         <button type="button" class="btn btn-success" data-map-opportunities aria-label="Buscar farmácias próximas"><i class="bi bi-buildings me-1"></i><span>Farmácias próximas</span></button>
     </div>
