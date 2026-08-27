@@ -1,0 +1,5 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/app/bootstrap.php';Auth::requireLogin();require __DIR__.'/_helpers.php';$dados=clienteDadosVazios();$erros=[];
+if($_SERVER['REQUEST_METHOD']==='POST'){$dados=clienteDadosPost();if(!Csrf::validate($_POST['csrf_token']??null))$erros[]='A sessão expirou. Atualize a página.';$erros=array_merge($erros,clienteErros($dados));if(!$erros){$pdo=Database::connection();$q=$pdo->prepare('SELECT COUNT(*) FROM clientes WHERE documento=:documento');$q->execute(['documento'=>$dados['documento']]);if((int)$q->fetchColumn()>0)$erros[]='Já existe um cliente com este CPF ou CNPJ.';else{$p=clienteParametros($dados);$campos=array_keys($p);$pdo->prepare('INSERT INTO clientes('.implode(',',$campos).') VALUES(:'.implode(',:',$campos).')')->execute($p);header('Location: /clientes/?resultado=criado');exit;}}}
+$pageTitle='Novo cliente';$activeMenu='clientes';require GEOPHARMA_ROOT.'/includes/header.php';require GEOPHARMA_ROOT.'/includes/page-start.php';require __DIR__.'/_form.php';require GEOPHARMA_ROOT.'/includes/page-end.php';require GEOPHARMA_ROOT.'/includes/footer.php';

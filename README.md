@@ -37,3 +37,10 @@ usuários, usando componentes do AdminLTE e Bootstrap já incluídos no projeto.
 - spinner e bloqueio temporário em todos os botões que enviam formulários;
 - controles com área de toque adequada e validação no servidor;
 - testes obrigatórios nas larguras de 360 px e 390 px antes da publicação.
+
+## Cadastro de clientes
+
+O cadastro de clientes não possui um campo separado de WhatsApp. Para pessoas
+jurídicas, ao completar ou consultar um CNPJ, o sistema busca os dados públicos
+na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. O
+usuário deve conferir e pode editar as informações antes de salvar.

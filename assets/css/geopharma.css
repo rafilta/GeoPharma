@@ -15,11 +15,19 @@ button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 .users-table th, .users-table td { white-space: nowrap; }
 .users-table td:first-child { min-width: 290px; }
 .users-table .users-actions .btn { min-height: 38px; }
+.crud-table-wrapper { overflow-x: auto; overscroll-behavior-inline: contain; -webkit-overflow-scrolling: touch; }
+.crud-table { min-width: 900px; }
+.crud-table th, .crud-table td { white-space: nowrap; }
+.crud-table td:first-child { min-width: 250px; }
+.crud-actions .btn { min-height: 38px; }
 
 @media (max-width: 767.98px) {
     .users-table-wrapper { scrollbar-width: thin; }
     .users-table th, .users-table td { padding: .75rem; }
     .users-table .users-actions .btn { min-height: 44px; }
+    .crud-table-wrapper { scrollbar-width: thin; }
+    .crud-table th, .crud-table td { padding: .75rem; }
+    .crud-actions .btn { min-height: 44px; }
 }
 
 @media (max-width: 575.98px) {
