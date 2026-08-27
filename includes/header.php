@@ -17,7 +17,7 @@ $usuarioAtual = Auth::user();
     <link rel="stylesheet" href="/assets/css/geopharma.css?v=<?= GEOPHARMA_VERSION ?>">
     <?php foreach(($extraStyles??[]) as $style):?><link rel="stylesheet" href="<?= htmlspecialchars($style) ?>"><?php endforeach;?>
 </head>
-<body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
+<body class="layout-fixed sidebar-expand-lg bg-body-tertiary geopharma-fixed-bars">
 <div class="app-wrapper">
     <nav class="app-header navbar navbar-expand bg-body">
         <div class="container-fluid">

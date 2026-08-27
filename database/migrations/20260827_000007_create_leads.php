@@ -1,0 +1,32 @@
+<?php
+declare(strict_types=1);
+return static function(PDO $pdo):void{$pdo->exec("CREATE TABLE leads (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ osm_id VARCHAR(60) NULL,
+ cnpj VARCHAR(18) NULL,
+ razao_social VARCHAR(180) NULL,
+ nome_fantasia VARCHAR(180) NOT NULL,
+ telefone VARCHAR(30) NULL,
+ email VARCHAR(190) NULL,
+ cep VARCHAR(12) NULL,
+ logradouro VARCHAR(220) NULL,
+ numero VARCHAR(30) NULL,
+ complemento VARCHAR(120) NULL,
+ bairro VARCHAR(120) NULL,
+ cidade VARCHAR(120) NULL,
+ estado VARCHAR(2) NULL,
+ latitude DECIMAL(10,7) NOT NULL,
+ longitude DECIMAL(10,7) NOT NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'novo',
+ observacoes TEXT NULL,
+ cliente_id BIGINT UNSIGNED NULL,
+ capturado_por BIGINT UNSIGNED NOT NULL,
+ criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY leads_osm_unique (osm_id),
+ UNIQUE KEY leads_cnpj_unique (cnpj),
+ KEY leads_status_index (status),
+ KEY leads_localizacao_index (latitude,longitude),
+ CONSTRAINT leads_cliente_fk FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+ CONSTRAINT leads_usuario_fk FOREIGN KEY (capturado_por) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");};

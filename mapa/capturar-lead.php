@@ -1,0 +1,9 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/app/bootstrap.php';Auth::requireLogin();header('Content-Type: application/json; charset=utf-8');
+if($_SERVER['REQUEST_METHOD']!=='POST'||!Csrf::validate($_POST['csrf_token']??null)){http_response_code(419);echo json_encode(['erro'=>'A sessão expirou. Atualize a página.'],JSON_UNESCAPED_UNICODE);exit;}
+$osmId=trim((string)($_POST['osm_id']??''));$nome=trim((string)($_POST['nome']??''));$telefone=trim((string)($_POST['telefone']??''));$endereco=trim((string)($_POST['endereco']??''));$lat=filter_var($_POST['latitude']??null,FILTER_VALIDATE_FLOAT);$lng=filter_var($_POST['longitude']??null,FILTER_VALIDATE_FLOAT);
+if($osmId===''||mb_strlen($nome)<2||$lat===false||$lng===false){http_response_code(422);echo json_encode(['erro'=>'Os dados dessa farmácia estão incompletos.'],JSON_UNESCAPED_UNICODE);exit;}
+$pdo=Database::connection();$existente=$pdo->prepare('SELECT id,status FROM leads WHERE osm_id=:osm_id');$existente->execute(['osm_id'=>$osmId]);$lead=$existente->fetch();if($lead){http_response_code(409);echo json_encode(['erro'=>'Essa farmácia já foi capturada como lead.','lead_id'=>(int)$lead['id']],JSON_UNESCAPED_UNICODE);exit;}
+$usuario=Auth::user();$inserir=$pdo->prepare('INSERT INTO leads(osm_id,nome_fantasia,telefone,logradouro,latitude,longitude,capturado_por) VALUES(:osm_id,:nome,:telefone,:endereco,:latitude,:longitude,:usuario)');$inserir->execute(['osm_id'=>$osmId,'nome'=>$nome,'telefone'=>$telefone!==''?$telefone:null,'endereco'=>$endereco!==''?$endereco:null,'latitude'=>$lat,'longitude'=>$lng,'usuario'=>(int)$usuario['id']]);
+echo json_encode(['mensagem'=>'Lead capturado com sucesso.','lead_id'=>(int)$pdo->lastInsertId()],JSON_UNESCAPED_UNICODE);

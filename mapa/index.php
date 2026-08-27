@@ -28,6 +28,7 @@ require GEOPHARMA_ROOT.'/includes/header.php';require GEOPHARMA_ROOT.'/includes/
             <a class="btn btn-outline-success" data-detail-call hidden><i class="bi bi-telephone me-1"></i>Ligar</a>
             <a class="btn btn-outline-primary" data-detail-edit hidden><i class="bi bi-pencil me-1"></i>Editar</a>
             <button type="button" class="btn btn-primary" data-detail-visit-button hidden><i class="bi bi-clipboard-check me-1"></i>Registrar visita</button>
+            <button type="button" class="btn btn-primary" data-detail-capture hidden data-loading-label="Capturando..."><i class="bi bi-person-plus me-1"></i>Capturar lead</button>
         </div>
     </section>
 </div>

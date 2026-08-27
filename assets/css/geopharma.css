@@ -3,6 +3,10 @@
 .map-placeholder { min-height: 430px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem; background: var(--bs-tertiary-bg); border: 1px dashed var(--bs-border-color); border-radius: .5rem; color: var(--bs-secondary-color); }
 .map-placeholder i { font-size: 3rem; color: #31c48d; }
 .app-footer { font-size: .875rem; }
+.geopharma-fixed-bars .app-header { position: fixed; z-index: 1035; top: 0; right: 0; left: var(--lte-sidebar-width); }
+.geopharma-fixed-bars .app-main { padding-top: 57px; padding-bottom: 64px; }
+.geopharma-fixed-bars .app-footer { position: fixed; z-index: 1030; right: 0; bottom: 0; left: var(--lte-sidebar-width); min-height: 52px; background: var(--bs-body-bg); }
+.geopharma-fixed-bars.sidebar-collapse .app-header, .geopharma-fixed-bars.sidebar-collapse .app-footer { left: 0; }
 button[aria-busy="true"] { cursor: wait !important; opacity: .88; }
 button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 .user-avatar { display: grid; flex: 0 0 42px; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: #dff7f1; color: #087f6a; font-weight: 800; }
@@ -22,6 +26,8 @@ button[aria-busy="true"] .spinner-border { flex: 0 0 auto; }
 .crud-actions .btn { min-height: 38px; }
 
 @media (max-width: 767.98px) {
+    .geopharma-fixed-bars .app-header, .geopharma-fixed-bars .app-footer { left: 0; }
+    .geopharma-fixed-bars .app-footer { padding-right: max(.75rem, env(safe-area-inset-right)); padding-bottom: max(.75rem, env(safe-area-inset-bottom)); padding-left: max(.75rem, env(safe-area-inset-left)); }
     .users-table-wrapper { scrollbar-width: thin; }
     .users-table th, .users-table td { padding: .75rem; }
     .users-table .users-actions .btn { min-height: 44px; }

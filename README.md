@@ -48,9 +48,19 @@ na BrasilAPI e preenche automaticamente os campos cadastrais disponíveis. A
 latitude e a longitude são obtidas automaticamente pela geolocalização do CEP. O
 usuário deve conferir e pode editar as informações antes de salvar.
 
+## Fluxo de leads
+
+Farmácias reais encontradas no OpenStreetMap podem ser capturadas no mapa como
+leads. O sistema preserva o identificador OSM para impedir duplicidade. O
+representante complementa o CNPJ e os dados oficiais, acompanha o funil
+(novo, contato, visita, negociação, convertido ou perdido) e converte o lead em
+cliente somente após confirmar o CNPJ. A conversão deve manter endereço,
+contatos e coordenadas do lead.
+
 ## Mapa de oportunidades
 
 O mapa usa os clientes e coordenadas reais do MySQL, os mapas do OpenStreetMap
 e farmácias consultadas em tempo real no Overpass/OpenStreetMap. Dados fictícios
 não devem ser exibidos como clientes ou oportunidades. O mapa também permite
 usar a localização real do aparelho, abrir rota e registrar visitas aos clientes.
+O cabeçalho e o rodapé do sistema permanecem fixos durante a navegação.

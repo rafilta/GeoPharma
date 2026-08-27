@@ -12,7 +12,7 @@
     const map=L.map('geopharma-map',{zoomControl:true}).setView([-22.9068,-43.1729],12);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
     clientLayer.addTo(map);opportunityLayer.addTo(map);
-    let currentPosition=null;let searchCenter=null;let currentMarker=null;let centerMarker=null;let radiusCircle=null;let selectedClient=null;let searchTimer=null;let searchRequest=0;const clientItems=[];const opportunityItems=[];
+    let currentPosition=null;let searchCenter=null;let currentMarker=null;let centerMarker=null;let radiusCircle=null;let selectedClient=null;let selectedOpportunity=null;let searchTimer=null;let searchRequest=0;const clientItems=[];const opportunityItems=[];
     const setStatus=(message,loading=false,error=false)=>{
         if(!message){status.hidden=true;return;}
         status.hidden=false;status.innerHTML='';
@@ -23,7 +23,7 @@
     const text=(selector,value='—')=>{detail.querySelector(selector).textContent=value||'—';};
     const routeUrl=(lat,lng)=>`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(lat+','+lng)}`;
     const openDetail=(item,type)=>{
-        selectedClient=type==='client'?item:null;detail.hidden=false;
+        selectedClient=type==='client'?item:null;selectedOpportunity=type==='opportunity'?item:null;detail.hidden=false;
         text('[data-detail-type]',type==='client'?'Cliente cadastrado':'Oportunidade OpenStreetMap');
         text('[data-detail-name]',item.nome_fantasia||item.nome||item.razao_social);
         const address=item.endereco||[item.logradouro,item.numero,item.bairro,item.cidade,item.estado].filter(Boolean).join(', ');
@@ -35,6 +35,7 @@
         const call=detail.querySelector('[data-detail-call]');const phone=(item.telefone||'').replace(/\D/g,'');call.hidden=!phone;call.href=phone?`tel:${phone}`:'#';
         const edit=detail.querySelector('[data-detail-edit]');edit.hidden=type!=='client';if(type==='client')edit.href=`/clientes/edit.php?id=${item.id}`;
         detail.querySelector('[data-detail-visit-button]').hidden=type!=='client';
+        const capture=detail.querySelector('[data-detail-capture]');capture.hidden=type!=='opportunity';capture.disabled=Boolean(item.capturado);capture.innerHTML=item.capturado?'<i class="bi bi-check-lg me-1"></i>Lead já capturado':'<i class="bi bi-person-plus me-1"></i>Capturar lead';
     };
     const hideSuggestions=()=>{suggestions.hidden=true;suggestions.innerHTML='';search.setAttribute('aria-expanded','false');};
     const drawRadius=()=>{
@@ -117,6 +118,13 @@
         clientInput.setAttribute('value',clientId);
         visitForm.querySelector('[data-visit-error]').hidden=true;
         visitModal.show();
+    });
+    detail.querySelector('[data-detail-capture]').addEventListener('click',async event=>{
+        if(!selectedOpportunity)return;const button=event.currentTarget;const original=button.innerHTML;button.disabled=true;button.setAttribute('aria-busy','true');button.innerHTML='<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> Capturando...';
+        const data=new FormData();data.append('csrf_token',app.dataset.csrf);data.append('osm_id',selectedOpportunity.osm_id||'');data.append('nome',selectedOpportunity.nome||'');data.append('telefone',selectedOpportunity.telefone||'');data.append('endereco',selectedOpportunity.endereco||'');data.append('latitude',selectedOpportunity.latitude);data.append('longitude',selectedOpportunity.longitude);
+        try{const response=await fetch('/mapa/capturar-lead.php',{method:'POST',body:data,headers:{Accept:'application/json'}});const result=await response.json();if(!response.ok)throw new Error(result.erro||'Não foi possível capturar o lead.');selectedOpportunity.capturado=true;button.innerHTML='<i class="bi bi-check-lg me-1"></i>Lead capturado';setStatus(result.mensagem);window.setTimeout(()=>setStatus(''),2500);}
+        catch(error){button.innerHTML=original;button.disabled=false;setStatus(error.message||'Erro ao capturar lead.',false,true);}
+        finally{button.removeAttribute('aria-busy');}
     });
     visitForm.addEventListener('submit',async event=>{
         event.preventDefault();const errorBox=visitForm.querySelector('[data-visit-error]');errorBox.hidden=true;const data=new FormData(visitForm);data.set('cliente_id',String(selectedClient?.id||''));data.append('csrf_token',app.dataset.csrf);

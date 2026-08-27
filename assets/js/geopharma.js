@@ -82,4 +82,20 @@
         });
         documento.value = formatarDocumento(documento.value);
     }
+
+    const leadForm = document.querySelector('[data-lead-form]');
+    if (leadForm instanceof HTMLFormElement) {
+        const documento = leadForm.querySelector('#documento');
+        const status = leadForm.querySelector('[data-cnpj-status]');
+        let ultimoCnpj = '';
+        let consultando = false;
+        const somenteNumeros = (valor) => valor.replace(/\D/g, '');
+        const formatarDocumento = (valor) => somenteNumeros(valor).slice(0, 14).replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\/\d{4})(\d)/, '$1-$2');
+        const consultar = async () => {
+            const cnpj = somenteNumeros(documento.value);if(cnpj.length!==14||consultando||cnpj===ultimoCnpj)return;consultando=true;status.innerHTML='<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Consultando dados oficiais...';status.className='form-text text-success';
+            try{const resposta=await fetch('/clientes/consultar-cnpj.php?cnpj='+encodeURIComponent(cnpj),{headers:{Accept:'application/json'}});const dados=await resposta.json();if(!resposta.ok)throw new Error(dados.erro||'Não foi possível consultar o CNPJ.');['razao_social','nome_fantasia','telefone','email','cep','logradouro','numero','complemento','bairro','cidade','estado'].forEach(campo=>{const input=leadForm.elements.namedItem(campo);if(input instanceof HTMLInputElement&&dados[campo])input.value=dados[campo];});ultimoCnpj=cnpj;status.textContent='Dados oficiais preenchidos. Confira antes de salvar.';status.className='form-text text-success fw-semibold';}
+            catch(erro){status.textContent=erro instanceof Error?erro.message:'Não foi possível consultar o CNPJ.';status.className='form-text text-danger fw-semibold';}finally{consultando=false;}
+        };
+        documento.addEventListener('input',()=>{documento.value=formatarDocumento(documento.value);if(somenteNumeros(documento.value).length===14)consultar();});documento.value=formatarDocumento(documento.value);
+    }
 })();
